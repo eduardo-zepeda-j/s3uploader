@@ -144,3 +144,6 @@ The application:
 <div align="center">
 Developed with ❤️ by <b>Eduardo Zepeda</b>.
 </div>
+
+
+[![Build Multi-Platform Releases](https://github.com/eduardo-zepeda-j/s3uploader/actions/workflows/build-release.yml/badge.svg)](https://github.com/eduardo-zepeda-j/s3uploader/actions/workflows/build-release.yml)
