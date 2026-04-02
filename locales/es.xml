@@ -1,0 +1,121 @@
+<resources>
+    <!-- Login -->
+    <string name="login_title">Inicio de Sesión AWS</string>
+    <string name="login_subtitle">Configuración AWS\n(Arrastra aquí tu CSV)</string>
+    <string name="load_csv_btn">Cargar CSV de Credenciales</string>
+    <string name="or_manual_entry">O ingresa manualmente:</string>
+    <string name="ph_access_key">Access Key</string>
+    <string name="ph_secret_key">Secret Key</string>
+    <string name="ph_region">Región (ej. us-east-1)</string>
+    <string name="btn_connect">Conectar</string>
+    <string name="err_drop_csv_only">Arrastra únicamente un archivo .csv</string>
+    <string name="csv_files">Archivos CSV</string>
+    <string name="title_credentials">Credenciales</string>
+    <string name="msg_credentials_loaded">Credenciales cargadas.</string>
+    <string name="err_csv">Error CSV</string>
+
+    <!-- Modal Move -->
+    <string name="move_modal_title">Escoger Destino de Archivos</string>
+    <string name="lbl_target_root">Destino: Raíz /</string>
+    <string name="btn_move_here">🚚 Mover Aquí</string>
+    <string name="lbl_target_prefix">Destino: </string>
+    <string name="lbl_none">Ninguno</string>
+    <string name="lbl_buckets">Buckets</string>
+    <string name="lbl_no_subfolders">No hay subcarpetas.</string>
+    <string name="lbl_error">Error</string>
+    <string name="msg_null_target_title">Destino nulo</string>
+    <string name="msg_select_target_bucket">Seleccione un Bucket destino.</string>
+    <string name="msg_move_title">Mover</string>
+    <string name="msg_same_origin_dest">El origen y el destino son los mismos.</string>
+    <string name="btn_processing">Procesando...</string>
+
+    <!-- UI Main -->
+    <string name="app_title">s3Uploader V1 - By Eduardo Zepeda</string>
+    <string name="warn_no_icon">Advertencia: No se encontró el icono en </string>
+    <string name="err_loading_icon">Error cargando icono: </string>
+    <string name="lbl_my_repos">Mis Repositorios</string>
+    <string name="btn_refresh">↻ Refrescar</string>
+    <string name="btn_change_pin">🔑 Cambiar PIN de Borrado</string>
+    <string name="sw_light_mode">Modo Claro</string>
+    <string name="sw_dark_mode">Modo Oscuro</string>
+    <string name="btn_logout">🚪 Cerrar Sesión</string>
+    <string name="lbl_storage_class">Clase de Almacenamiento</string>
+    <string name="lbl_language">Idioma / Language</string>
+    
+    <string name="btn_download_sel">⬇ Descargar Slc.</string>
+    <string name="btn_move_sel">🚚 Mover Slc.</string>
+    <string name="btn_up_files">+ Subir Archivos</string>
+    <string name="btn_up_folder">+ Subir Carpeta</string>
+    <string name="btn_new_folder">+ Nueva Carpeta</string>
+    <string name="btn_view_grid">Visión: Cuadrícula</string>
+    <string name="btn_view_list">Visión: Lista</string>
+    <string name="lbl_ready">Listo</string>
+    
+    <string name="msg_attention_title">Atención</string>
+    <string name="msg_connect_select_bucket">Conecta y selecciona un Bucket primero.</string>
+    <string name="msg_confirm_upload_title">Confirmar carga</string>
+    <string name="msg_confirm_upload_text_1">¿Deseas subir </string>
+    <string name="msg_confirm_upload_text_2"> elemento(s)?</string>
+    
+    <string name="msg_enter_current_pin">Ingresa el PIN actual:</string>
+    <string name="msg_security_title">Seguridad</string>
+    <string name="msg_enter_new_pin">Ingresa el NUEVO PIN:</string>
+    <string name="msg_new_pin_title">Nuevo PIN</string>
+    <string name="msg_success_title">Éxito</string>
+    <string name="msg_pin_updated">PIN actualizado correctamente.</string>
+    <string name="msg_incorrect_pin">PIN actual incorrecto.</string>
+    
+    <string name="btn_home">🏠 Inicio</string>
+    <string name="msg_lang_change_title">Cambio de Idioma</string>
+    <string name="msg_restart_for_lang">Por favor, reinicia la aplicación para aplicar el cambio de idioma.</string>
+    
+    <string name="msg_copied_title">Copiado</string>
+    <string name="msg_link_copied">Enlace firmado copiado al portapapeles (Válido por 7 días).</string>
+    <string name="msg_no_downloads_folder">No se pudo detectar carpeta de descargas.</string>
+    <string name="msg_empty_sel_title">Selección vacía</string>
+    <string name="msg_select_at_least_one">Selecciona al menos un archivo o carpeta.</string>
+    
+    <string name="msg_starting_bulk_down_1">Iniciando descarga masiva de </string>
+    <string name="msg_starting_bulk_down_2"> elementos en </string>
+    <string name="msg_bulk_down_title">Descarga Masiva</string>
+    <string name="msg_downloaded_count_1">Se descargaron </string>
+    <string name="msg_downloaded_count_2"> archivos exitosamente.</string>
+    <string name="msg_calc_total_size">Calculando tamaño total...</string>
+    <string name="msg_starting_download">Iniciando descarga de</string>
+    <string name="msg_downloading">Descargando</string>
+    <string name="msg_download_success_title">Descarga Exitosa</string>
+    <string name="msg_file_saved_at">Archivo guardado en</string>
+    <string name="msg_download_complete">Descarga completada</string>
+    <string name="msg_download_error_title">Error en Descarga</string>
+    <string name="msg_download_error">Error de descarga</string>
+    <string name="msg_fail_start_download">Fallo al iniciar descarga</string>
+    <string name="msg_error_link">Error en el enlace</string>
+    
+    <string name="msg_bulk_down_complete">Descarga masiva completada</string>
+    
+    <string name="msg_move_complete_title">Mover Completo</string>
+    <string name="msg_objects_moved_to">Los objetos fueron movidos exitosamente a </string>
+    <string name="msg_err_moving_title">Error al mover</string>
+    <string name="msg_new_name_for">Nuevo nombre para \'</string>
+    <string name="msg_extension_1">\'\n(La extensión </string>
+    <string name="msg_extension_2"> se mantendrá):</string>
+    <string name="msg_rename_title">Renombrar</string>
+    <string name="msg_new_folder_name_for">Nuevo nombre de carpeta para \'</string>
+    <string name="msg_renaming_1">Renombrando \'</string>
+    <string name="msg_renaming_2">\' a \'</string>
+    <string name="msg_err_renaming_title">Error Renombrando</string>
+    
+    <string name="msg_pass_to_delete">Pass para borrar \'</string>
+    <string name="msg_confirm_del_title">Confirmar Eliminación</string>
+    <string name="msg_sure_to_delete_1">¿Estás SEGURO de eliminar definitivamente:\n\n</string>
+    <string name="msg_sure_to_delete_2">\n\nEsta acción no se puede deshacer?</string>
+    <string name="msg_incorrect_pass">La contraseña ingresada es incorrecta</string>
+    
+    <string name="msg_folder_name_input">Nombre:</string>
+    <string name="msg_new_folder_title">Nueva Carpeta</string>
+    <string name="msg_uploading">Subiendo... </string>
+    <string name="msg_upload_complete">¡Carga completa! Total: </string>
+    <string name="msg_uploaded_count_1">Se subieron </string>
+    <string name="msg_uploaded_count_2"> elementos exitosamente.</string>
+    <string name="msg_no_parent_dir">El directorio padre no existe.</string>
+</resources>

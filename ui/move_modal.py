@@ -3,10 +3,12 @@ from tkinter import messagebox
 import threading
 import os
 
+from core.i18n import t
+
 class MoveModal(ctk.CTkToplevel):
     def __init__(self, master, s3_manager, items_to_move, origin_bucket, origin_prefix, on_close_callback):
         super().__init__(master)
-        self.title("Escoger Destino de Archivos")
+        self.title(t("move_modal_title"))
         self.geometry("600x500")
         self.resizable(False, False)
         # Block interaction with master UI while modal is open
@@ -53,23 +55,23 @@ class MoveModal(ctk.CTkToplevel):
         self.footer_frame = ctk.CTkFrame(self, height=50, fg_color="transparent")
         self.footer_frame.pack(fill="x", side="bottom", pady=10, padx=10)
 
-        self.lbl_target = ctk.CTkLabel(self.footer_frame, text="Destino: Raíz /", font=("Helvetica Neue", 12, "bold"))
+        self.lbl_target = ctk.CTkLabel(self.footer_frame, text=t("lbl_target_root"), font=("Helvetica Neue", 12, "bold"))
         self.lbl_target.pack(side="left")
 
-        self.btn_move = ctk.CTkButton(self.footer_frame, text="🚚 Mover Aquí", fg_color=("#E5E7EB", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 14, "bold"), command=self.perform_move)
+        self.btn_move = ctk.CTkButton(self.footer_frame, text=t("btn_move_here"), fg_color=("#E5E7EB", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 14, "bold"), command=self.perform_move)
         self.btn_move.pack(side="right")
         
         self.update_breadcrumbs()
 
     def update_target_label(self):
-        t = f"Destino: {self.current_bucket if self.current_bucket else 'Ninguno'} / {self.current_prefix}"
-        self.lbl_target.configure(text=t)
+        t_text = f"{t('lbl_target_prefix')}{self.current_bucket if self.current_bucket else t('lbl_none')} / {self.current_prefix}"
+        self.lbl_target.configure(text=t_text)
 
     def populate_buckets(self):
         for widget in self.shortcuts_frame.winfo_children(): widget.destroy()
         try:
             response = self.s3_manager.client.list_buckets()
-            ctk.CTkLabel(self.shortcuts_frame, text="Buckets", font=("Helvetica Neue", 12, "bold")).pack(pady=(5, 10))
+            ctk.CTkLabel(self.shortcuts_frame, text=t("lbl_buckets"), font=("Helvetica Neue", 12, "bold")).pack(pady=(5, 10))
             for b in response['Buckets']:
                 bname = b['Name']
                 cmd = lambda name=bname: self.load_directory(name, "")
@@ -104,10 +106,10 @@ class MoveModal(ctk.CTkToplevel):
                     btn = ctk.CTkButton(card, text="📂 " + folder_name, fg_color="transparent", hover_color=("#D1D5DB", "#374151"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 13), anchor="w", command=cmd)
                     btn.pack(fill="x", expand=True)
             else:
-                 ctk.CTkLabel(self.explorer_frame, text="No hay subcarpetas.").pack(pady=20)
+                 ctk.CTkLabel(self.explorer_frame, text=t("lbl_no_subfolders")).pack(pady=20)
                  
         except Exception as e:
-            messagebox.showerror("Error", str(e), parent=self)
+            messagebox.showerror(t("lbl_error"), str(e), parent=self)
 
     def update_breadcrumbs(self):
         for widget in self.breadcrumbs_frame.winfo_children(): widget.destroy()
@@ -131,16 +133,16 @@ class MoveModal(ctk.CTkToplevel):
 
     def perform_move(self):
         if not self.current_bucket:
-            messagebox.showwarning("Destino nulo", "Seleccione un Bucket destino.", parent=self)
+            messagebox.showwarning(t("msg_null_target_title"), t("msg_select_target_bucket"), parent=self)
             return
 
         # Check if moving into the exact same folder
         if self.current_bucket == self.origin_bucket and self.current_prefix == self.origin_prefix:
-            messagebox.showinfo("Mover", "El origen y el destino son los mismos.", parent=self)
+            messagebox.showinfo(t("msg_move_title"), t("msg_same_origin_dest"), parent=self)
             return
 
         # Disable button to prevent double clicks
-        self.btn_move.configure(state="disabled", text="Procesando...")
+        self.btn_move.configure(state="disabled", text=t("btn_processing"))
         
         # Fire background movement properly tracked back to Main app
         self.on_close_callback(self.items_to_move, self.current_bucket, self.current_prefix)

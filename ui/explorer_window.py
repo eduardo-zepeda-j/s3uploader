@@ -17,6 +17,7 @@ from core.s3_manager import S3Manager
 from ui.login_window import LoginWindow
 from ui.move_modal import MoveModal
 from utils.helpers import resource_path, get_download_dir
+from core.i18n import t, init_i18n, get_lang
 
 FILE_ICONS = [
     (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'], "🎵", ("#107c10", "#1DB954")),
@@ -36,7 +37,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         super().__init__()
         self.TkdndVersion = TkinterDnD._require(self)
 
-        self.title("S3 Uploader - By Eduardo Zepeda - V 0.0.2 ")
+        self.title(t("app_title"))
         self.geometry("1400x900")
         self.withdraw()
         
@@ -81,34 +82,39 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 # Set window and Dock icon at runtime
                 self.iconphoto(True, self.icon_image)
             else:
-                print(f"Advertencia: No se encontró el icono en {icon_path}")
+                print(f"{t('warn_no_icon')}{icon_path}")
         except Exception as e:
-            print(f"Error cargando icono: {e}")
+            print(f"{t('err_loading_icon')}{e}")
 
     def init_ui(self):
         # --- Sidebar ---
         self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color=("#E5E7EB", "#0B0C10"))
         self.sidebar.pack(side="left", fill="y")
 
-        ctk.CTkLabel(self.sidebar, text="Mis Repositorios", font=("Helvetica Neue", 20, "bold"), text_color=("#111827", "#F9FAFB")).pack(pady=(30, 10))
+        ctk.CTkLabel(self.sidebar, text=t("lbl_my_repos"), font=("Helvetica Neue", 20, "bold"), text_color=("#111827", "#F9FAFB")).pack(pady=(30, 10))
         self.sidebar_buckets_frame = ctk.CTkScrollableFrame(self.sidebar, fg_color="transparent")
         self.sidebar_buckets_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
-        self.btn_refresh_buckets = ctk.CTkButton(self.sidebar, text="↻ Refrescar", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#374151", "#E5E7EB"), command=self.populate_sidebar_buckets)
+        self.btn_refresh_buckets = ctk.CTkButton(self.sidebar, text=t("btn_refresh"), font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#374151", "#E5E7EB"), command=self.populate_sidebar_buckets)
         self.btn_refresh_buckets.pack(pady=10, padx=20, fill="x")
 
-        self.btn_change_pass = ctk.CTkButton(self.sidebar, text="🔑 Cambiar PIN de Borrado", font=("Helvetica Neue", 13, "bold"), fg_color="transparent", hover_color=("#D1D5DB", "#1F2937"), text_color=("#374151", "#E5E7EB"), command=self.change_password_task)
+        self.btn_change_pass = ctk.CTkButton(self.sidebar, text=t("btn_change_pin"), font=("Helvetica Neue", 13, "bold"), fg_color="transparent", hover_color=("#D1D5DB", "#1F2937"), text_color=("#374151", "#E5E7EB"), command=self.change_password_task)
         self.btn_change_pass.pack(pady=(0, 10), padx=20, fill="x")
 
-        self.theme_switch = ctk.CTkSwitch(self.sidebar, text="Modo Claro", font=("Helvetica Neue", 13), command=self.toggle_theme)
-        self.theme_switch.pack(side="bottom", pady=25)
+        self.lang_var = ctk.StringVar(value=get_lang())
+        self.lang_menu = ctk.CTkSegmentedButton(self.sidebar, values=["es", "en"], variable=self.lang_var, command=self.change_language)
+        self.lang_menu.pack(side="bottom", pady=10, padx=20, fill="x")
+        ctk.CTkLabel(self.sidebar, text=t("lbl_language"), font=("Helvetica Neue", 12, "bold"), text_color=("#6B7280", "#9CA3AF")).pack(side="bottom", pady=(5,0))
 
-        self.btn_logout = ctk.CTkButton(self.sidebar, text="🚪 Cerrar Sesión", font=("Helvetica Neue", 14, "bold"), fg_color=("#FEE2E2", "#7F1D1D"), hover_color=("#FECACA", "#991B1B"), text_color=("#991B1B", "#FECACA"), command=self.logout)
+        self.theme_switch = ctk.CTkSwitch(self.sidebar, text=t("sw_light_mode") if ctk.get_appearance_mode() == "Dark" else t("sw_dark_mode"), font=("Helvetica Neue", 13), command=self.toggle_theme)
+        self.theme_switch.pack(side="bottom", pady=15)
+
+        self.btn_logout = ctk.CTkButton(self.sidebar, text=t("btn_logout"), font=("Helvetica Neue", 14, "bold"), fg_color=("#FEE2E2", "#7F1D1D"), hover_color=("#FECACA", "#991B1B"), text_color=("#991B1B", "#FECACA"), command=self.logout)
         self.btn_logout.pack(side="bottom", pady=10, padx=20, fill="x")
 
         self.storage_menu = ctk.CTkOptionMenu(self.sidebar, values=["STANDARD", "GLACIER_IR", "DEEP_ARCHIVE", "ONEZONE_IA"], font=("Helvetica Neue", 12), fg_color=("#E5E7EB", "#1F2937"), button_color=("#D1D5DB", "#374151"), text_color=("#111827", "#F9FAFB"))
         self.storage_menu.pack(side="bottom", pady=5, padx=20, fill="x")
-        ctk.CTkLabel(self.sidebar, text="Clase de Almacenamiento", font=("Helvetica Neue", 12, "bold"), text_color=("#6B7280", "#9CA3AF")).pack(side="bottom", pady=(15,0))
+        ctk.CTkLabel(self.sidebar, text=t("lbl_storage_class"), font=("Helvetica Neue", 12, "bold"), text_color=("#6B7280", "#9CA3AF")).pack(side="bottom", pady=(15,0))
 
         # --- Main View ---
         self.main_view = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#1F2937"), corner_radius=0)
@@ -143,26 +149,26 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.actions_frame = ctk.CTkFrame(self.main_view, fg_color="transparent")
         self.actions_frame.pack(fill="x", pady=5)
 
-        self.btn_download_sel = ctk.CTkButton(self.actions_frame, text="⬇ Descargar Slc.", font=("Helvetica Neue", 13, "bold"), command=self.download_selected_items, fg_color=("#D1FAE5", "#064E3B"), hover_color=("#A7F3D0", "#065F46"), text_color=("#065F46", "#34D399"), width=130)
+        self.btn_download_sel = ctk.CTkButton(self.actions_frame, text=t("btn_download_sel"), font=("Helvetica Neue", 13, "bold"), command=self.download_selected_items, fg_color=("#D1FAE5", "#064E3B"), hover_color=("#A7F3D0", "#065F46"), text_color=("#065F46", "#34D399"), width=130)
         self.btn_download_sel.pack(side="left", padx=8)
 
-        self.btn_move_sel = ctk.CTkButton(self.actions_frame, text="🚚 Mover Slc.", font=("Helvetica Neue", 13, "bold"), command=self.move_selected_items, fg_color=("#DBEAFE", "#1E3A8A"), hover_color=("#BFDBFE", "#1E40AF"), text_color=("#1E40AF", "#60A5FA"), width=110)
+        self.btn_move_sel = ctk.CTkButton(self.actions_frame, text=t("btn_move_sel"), font=("Helvetica Neue", 13, "bold"), command=self.move_selected_items, fg_color=("#DBEAFE", "#1E3A8A"), hover_color=("#BFDBFE", "#1E40AF"), text_color=("#1E40AF", "#60A5FA"), width=110)
         self.btn_move_sel.pack(side="left", padx=8)
 
-        self.btn_up_files = ctk.CTkButton(self.actions_frame, text="+ Subir Archivos", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("files"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
+        self.btn_up_files = ctk.CTkButton(self.actions_frame, text=t("btn_up_files"), font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("files"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
         self.btn_up_files.pack(side="left", padx=8)
 
-        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text="+ Subir Carpeta", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("folder"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
+        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text=t("btn_up_folder"), font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("folder"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
         self.btn_up_folder.pack(side="left", padx=8)
 
-        self.btn_new_folder = ctk.CTkButton(self.actions_frame, text="+ Nueva Carpeta", font=("Helvetica Neue", 13, "bold"), fg_color=("#FEF3C7", "#78350F"), hover_color=("#FDE68A", "#92400E"), text_color=("#92400E", "#FDE68A"), command=self.create_folder_task)
+        self.btn_new_folder = ctk.CTkButton(self.actions_frame, text=t("btn_new_folder"), font=("Helvetica Neue", 13, "bold"), fg_color=("#FEF3C7", "#78350F"), hover_color=("#FDE68A", "#92400E"), text_color=("#92400E", "#FDE68A"), command=self.create_folder_task)
         self.btn_new_folder.pack(side="left", padx=8)
 
-        self.btn_view_mode = ctk.CTkButton(self.actions_frame, text="Visión: Cuadrícula", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
+        self.btn_view_mode = ctk.CTkButton(self.actions_frame, text=t("btn_view_grid") if self.view_mode == "grid" else t("btn_view_list"), font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
         self.btn_view_mode.pack(side="right", padx=15)
 
         # Progress
-        self.prog_label = ctk.CTkLabel(self.main_view, text="Listo", font=("Helvetica Neue", 12))
+        self.prog_label = ctk.CTkLabel(self.main_view, text=t("lbl_ready"), font=("Helvetica Neue", 12))
         self.prog_label.pack(pady=4)
         self.prog_bar = ctk.CTkProgressBar(self.main_view, progress_color="#F59E0B", fg_color=("#E5E7EB", "#374151"), height=8)
         self.prog_bar.pack(fill="x", padx=30, pady=(0, 10))
@@ -188,10 +194,10 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def handle_upload_drop(self, paths):
         if not self.s3_manager or not self.current_bucket:
-            messagebox.showwarning("Atención", "Conecta y selecciona un Bucket primero.")
+            messagebox.showwarning(t("msg_attention_title"), t("msg_connect_select_bucket"))
             return
 
-        if messagebox.askyesno("Confirmar carga", f"¿Deseas subir {len(paths)} elemento(s)?"):
+        if messagebox.askyesno(t("msg_confirm_upload_title"), f"{t('msg_confirm_upload_text_1')}{len(paths)}{t('msg_confirm_upload_text_2')}"):
             threading.Thread(target=self.hilo_upload, args=(paths, "mixed"), daemon=True).start()
 
     def save_session(self):
@@ -204,6 +210,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         config["last_bucket"] = self.current_bucket
         config["last_prefix"] = self.current_prefix
         config["delete_password"] = self.delete_password
+        config["view_mode"] = getattr(self, "view_mode", "grid")
+        config["language"] = get_lang()
         with open(self.config_path, "w") as f:
             json.dump(config, f)
 
@@ -215,6 +223,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     self.current_bucket = c.get("last_bucket")
                     self.current_prefix = c.get("last_prefix", "")
                     self.delete_password = c.get("delete_password", "5834")
+                    self.view_mode = c.get("view_mode", "grid")
             except: pass
 
 
@@ -270,7 +279,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             widget.destroy()
 
         # Home button (Buckets list)
-        btn_home = ctk.CTkButton(self.breadcrumbs_frame, text="🏠 Inicio", width=30, fg_color="transparent", text_color=("#4B5563", "#AAAAAA"), hover_color=("#E5E7EB", "#333333"), command=self.list_buckets)
+        btn_home = ctk.CTkButton(self.breadcrumbs_frame, text=t("btn_home"), width=30, fg_color="transparent", text_color=("#4B5563", "#AAAAAA"), hover_color=("#E5E7EB", "#333333"), command=self.list_buckets)
         btn_home.pack(side="left", padx=2)
 
         if self.current_bucket:
@@ -353,15 +362,32 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         LoginWindow(self, self.on_login_success)
 
     def change_password_task(self):
-        curr_pwd = ctk.CTkInputDialog(text="Ingresa el PIN actual:", title="Seguridad").get_input()
+        curr_pwd = ctk.CTkInputDialog(text=t("msg_enter_current_pin"), title=t("msg_security_title")).get_input()
         if curr_pwd == self.delete_password:
-            new_pwd = ctk.CTkInputDialog(text="Ingresa el NUEVO PIN:", title="Nuevo PIN").get_input()
+            new_pwd = ctk.CTkInputDialog(text=t("msg_enter_new_pin"), title=t("msg_new_pin_title")).get_input()
             if new_pwd:
                 self.delete_password = new_pwd
                 self.save_session()
-                messagebox.showinfo("Éxito", "PIN actualizado correctamente.")
+                messagebox.showinfo(t("msg_success_title"), t("msg_pin_updated"))
         elif curr_pwd is not None:
-            messagebox.showerror("Error", "PIN actual incorrecto.")
+            messagebox.showerror(t("lbl_error"), t("msg_incorrect_pin"))
+
+    def change_language(self, new_lang):
+        import traceback
+        import sys
+        import os
+        try:
+            from core.i18n import _translator
+            if _translator:
+                _translator.current_lang = new_lang
+            self.save_session()
+            
+            # Restart the app in a detached process to avoid macOS UI policy inheritance issues
+            import subprocess
+            subprocess.Popen([sys.executable] + sys.argv, start_new_session=True)
+            self.on_close()
+        except Exception as e:
+            traceback.print_exc()
 
     def list_buckets(self):
         self.current_bucket = None
@@ -422,10 +448,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             self.clipboard_clear()
             self.clipboard_append(web_friendly_url)
             self.update()
-            
-            self.prog_label.configure(text=f"Enlace Web copiado: {os.path.basename(full_path)}")
+            messagebox.showinfo(t("msg_copied_title"), t("msg_link_copied"))
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo obtener el enlace: {str(e)}")
+            messagebox.showerror(t("lbl_error"), f"{t('msg_error_link')}: {str(e)}")
 
     def _get_download_dir(self):
         # Powerfully get system Downloads folder
@@ -492,7 +517,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     counter += 1
             
             def perform_download():
-                self.after(0, lambda: self.prog_label.configure(text=f"Iniciando descarga de {file_name}..."))
+                self.after(0, lambda: self.prog_label.configure(text=f"{t('msg_starting_download')} {file_name}..."))
                 try:
                     # 1. Get total size to calculate percentage
                     head = self.s3_manager.client.head_object(Bucket=self.current_bucket, Key=full_path)
@@ -518,36 +543,36 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                          self.prog_bar.set(pct)
                          mb_seen = round(seen / (1024 * 1024), 2)
                          mb_total = round(total_bytes / (1024 * 1024), 2)
-                         self.prog_label.configure(text=f"Descargando: {int(pct*100)}% ({mb_seen} MB / {mb_total} MB)")
+                         self.prog_label.configure(text=f"{t('msg_downloading')}: {int(pct*100)}% ({mb_seen} MB / {mb_total} MB)")
 
                     progress_tracker = DownloadProgress(total_bytes, lambda p, s: self.after(0, update_ui_download, p, s))
 
                     # 3. Download with Callback
                     self.s3_manager.client.download_file(self.current_bucket, full_path, local_path, Callback=progress_tracker)
                     
-                    self.after(0, lambda: messagebox.showinfo("Descarga Exitosa", f"Archivo guardado en:\n{local_path}"))
-                    self.after(0, lambda: self.prog_label.configure(text="Descarga compleada"))
+                    self.after(0, lambda: messagebox.showinfo(t("msg_download_success_title"), f"{t('msg_file_saved_at')}:\n{local_path}"))
+                    self.after(0, lambda: self.prog_label.configure(text=t("msg_download_complete")))
                     self.after(0, lambda: self.prog_bar.set(0))
                 except Exception as e_inner:
                     # Capture the error string immediately to avoid closure scoping issues
                     err_msg = str(e_inner)
-                    self.after(0, lambda m=err_msg: messagebox.showerror("Error Descarga", m))
-                    self.after(0, lambda: self.prog_label.configure(text="Error en descarga"))
+                    self.after(0, lambda m=err_msg: messagebox.showerror(t("msg_download_error_title"), m))
+                    self.after(0, lambda: self.prog_label.configure(text=t("msg_download_error")))
 
             threading.Thread(target=perform_download, daemon=True).start()
             
         except Exception as e:
-            messagebox.showerror("Error", f"Fallo al iniciar descarga: {str(e)}")
+            messagebox.showerror(t("lbl_error"), f"{t('msg_fail_start_download')}: {str(e)}")
 
     def download_selected_items(self):
         if not self.selected_items:
-            messagebox.showwarning("Selección vacía", "Selecciona al menos un archivo o carpeta.")
+            messagebox.showwarning(t("msg_empty_sel_title"), t("msg_select_at_least_one"))
             return
 
         # Automatic destination: Downloads folder
         dest_dir = self._get_download_dir()
         if not dest_dir: 
-             messagebox.showerror("Error", "No se pudo detectar carpeta de descargas.")
+             messagebox.showerror(t("lbl_error"), t("msg_no_downloads_folder"))
              return
 
         threading.Thread(target=self.hilo_bulk_download, args=(dest_dir,), daemon=True).start()
@@ -557,7 +582,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         items_to_process = [] # List of (s3_key, local_path_abs, s3_size)
         total_bytes = 0
 
-        self.after(0, lambda: self.prog_label.configure(text="Calculando tamaño total..."))
+        self.after(0, lambda: self.prog_label.configure(text=t("msg_calc_total_size")))
+        self.after(0, lambda: self.prog_bar.configure(mode="indeterminate"))
+        self.after(0, lambda: self.prog_bar.start())
 
         try:
              # Backup of selected items
@@ -641,8 +668,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                  except Exception as err:
                      print(f"Error {k}: {err}")
             
-             self.after(0, lambda: messagebox.showinfo("Descarga Masiva", f"Se descargaron {len(items_to_process)} archivos exitosamente."))
-             self.after(0, lambda: self.prog_label.configure(text="Descarga masiva completada"))
+             self.after(0, lambda: messagebox.showinfo(t("msg_bulk_down_title"), f"{t('msg_downloaded_count_1')}{len(items_to_process)}{t('msg_downloaded_count_2')}"))
+             self.after(0, lambda: self.prog_label.configure(text=t("msg_bulk_down_complete")))
              self.after(0, lambda: self.prog_bar.set(0))
              # Clear selection
              self.selection_clear_ui()
@@ -818,9 +845,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             # Reset selection and refresh UI
             self.selected_items.clear()
             self.after(0, lambda: self.enter_bucket(self.current_bucket))
-            self.after(0, lambda: messagebox.showinfo("Mover Completo", f"Los objetos fueron movidos exitosamente a {tgt_bucket}/{tgt_prefix}."))
+            self.after(0, lambda: messagebox.showinfo(t("msg_move_complete_title"), f"{t('msg_objects_moved_to')}{tgt_bucket}/{tgt_prefix}."))
         except Exception as e:
-            self.after(0, lambda err=e: messagebox.showerror("Error al mover", str(err)))
+            self.after(0, lambda err=e: messagebox.showerror(t("msg_err_moving_title"), str(err)))
         finally:
             self.after(0, self.prog_bar.stop)
             self.after(0, lambda: self.prog_bar.configure(mode="determinate"))
@@ -834,17 +861,17 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         if type == "file":
             import os
             base_name, ext = os.path.splitext(name)
-            new_base = ctk.CTkInputDialog(text=f"Nuevo nombre para '{base_name}'\n(La extensión {ext} se mantendrá):", title="Renombrar").get_input()
+            new_base = ctk.CTkInputDialog(text=f"{t('msg_new_name_for')}{base_name}{t('msg_extension_1')}{ext}{t('msg_extension_2')}", title=t("msg_rename_title")).get_input()
             if new_base and new_base != base_name:
                 new_name = new_base + ext
                 threading.Thread(target=self.perform_rename, args=(name, new_name, type, full_path, target_bucket, target_prefix), daemon=True).start()
         else:
-            new_name = ctk.CTkInputDialog(text=f"Nuevo nombre de carpeta para '{name}':", title="Renombrar").get_input()
+            new_name = ctk.CTkInputDialog(text=f"{t('msg_new_folder_name_for')}{name}':", title=t("msg_rename_title")).get_input()
             if new_name and new_name != name:
                 threading.Thread(target=self.perform_rename, args=(name, new_name, type, full_path, target_bucket, target_prefix), daemon=True).start()
 
     def perform_rename(self, old_name, new_name, type, full_path, target_bucket, target_prefix):
-        self.after(0, lambda: self.prog_label.configure(text=f"Renombrando '{old_name}' a '{new_name}'..."))
+        self.after(0, lambda: self.prog_label.configure(text=f"{t('msg_renaming_1')}{old_name}{t('msg_renaming_2')}{new_name}'..."))
         self.after(0, lambda: self.prog_bar.configure(mode="indeterminate"))
         self.after(0, lambda: self.prog_bar.start())
         try:
@@ -868,37 +895,42 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 self.s3_manager.client.copy_object(Bucket=target_bucket, CopySource={'Bucket': target_bucket, 'Key': full_path}, Key=new_key)
                 self.s3_manager.client.delete_object(Bucket=target_bucket, Key=full_path)
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("Error Renombrando", str(e)))
+            self.after(0, lambda: messagebox.showerror(t("msg_err_renaming_title"), str(e)))
         finally:
             self.after(0, lambda: self.prog_bar.stop())
             self.after(0, lambda: self.prog_bar.configure(mode="determinate"))
-            self.after(0, lambda: self.prog_label.configure(text="Listo"))
+            self.after(0, lambda: self.prog_label.configure(text=t("lbl_ready")))
             self.after(0, lambda: self.prog_bar.set(0))
             if self.current_bucket == target_bucket and self.current_prefix == target_prefix:
                 self.after(0, lambda: self.enter_bucket(self.current_bucket))
 
     def request_delete(self, name, type, full_path):
-        pwd = ctk.CTkInputDialog(text=f"Pass para borrar '{name}':", title="Seguridad").get_input()
+        pwd = ctk.CTkInputDialog(text=f"{t('msg_pass_to_delete')}{name}':", title=t("msg_security_title")).get_input()
         if pwd == self.delete_password:
-            if messagebox.askyesno("Confirmar Eliminación", f"¿Estás SEGURO de eliminar definitivamente:\n\n{name}\n\nEsta acción no se puede deshacer?"):
+            if messagebox.askyesno(t("msg_confirm_del_title"), f"{t('msg_sure_to_delete_1')}{name}{t('msg_sure_to_delete_2')}"):
                 target_bucket = self.current_bucket
                 target_prefix = self.current_prefix
                 import threading
                 threading.Thread(target=self.perform_delete, args=(full_path, type, target_bucket, target_prefix), daemon=True).start()
         elif pwd is not None:
-            messagebox.showerror("Error de Seguridad", "La contraseña ingresada es incorrecta")
+            messagebox.showerror(t("msg_security_title"), t("msg_incorrect_pass"))
 
     def perform_delete(self, key, type, target_bucket, target_prefix):
         try:
-            if type == "folder":
-                self.s3_manager.delete_folder(target_bucket, key)
+            if type == "file":
+                self.s3_manager.client.delete_object(Bucket=target_bucket, Key=key)
             else:
-                self.s3_manager.delete_file(target_bucket, key)
+                paginator = self.s3_manager.client.get_paginator('list_objects_v2')
+                for page in paginator.paginate(Bucket=target_bucket, Prefix=key):
+                    if 'Contents' in page:
+                         objects = [{'Key': obj['Key']} for obj in page['Contents']]
+                         self.s3_manager.client.delete_objects(Bucket=target_bucket, Delete={'Objects': objects})
             
             if self.current_bucket == target_bucket and self.current_prefix == target_prefix:
                 self.after(0, lambda: self.enter_bucket(self.current_bucket))
         except Exception as e:
-            self.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.thumbnail_cache.clear()
+            messagebox.showerror(t("lbl_error"), str(e))
 
     def enter_subfolder(self, prefix):
         self.current_prefix = prefix
@@ -914,14 +946,14 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def create_folder_task(self):
         if not self.current_bucket: return
-        name = ctk.CTkInputDialog(text="Nombre:", title="Nueva Carpeta").get_input()
+        name = ctk.CTkInputDialog(text=t("msg_folder_name_input"), title=t("msg_new_folder_title")).get_input()
         if name:
             full_key = self.current_prefix + name.strip().replace("/", "") + "/"
             try:
                 self.s3_manager.client.put_object(Bucket=self.current_bucket, Key=full_key)
                 self.enter_bucket(self.current_bucket)
             except Exception as e:
-                messagebox.showerror("Error", str(e))
+                messagebox.showerror(t("lbl_error"), str(e))
 
     def upload_task(self, type, paths_arg=None):
         if not self.current_bucket: return
@@ -978,7 +1010,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             self.prog_bar.set(pct)
             mb_seen = round(seen / (1024 * 1024), 2)
             mb_total = round(total_size_bytes / (1024 * 1024), 2)
-            self.prog_label.configure(text=f"Subiendo... {int(pct*100)}% ({mb_seen} MB / {mb_total} MB)")
+            self.prog_label.configure(text=f"{t('msg_uploading')}{int(pct*100)}% ({mb_seen} MB / {mb_total} MB)")
 
         progress_tracker = ProgressPercentage(total_size_bytes, lambda p, s: self.after(0, update_prog_bar, p, s))
 
@@ -996,11 +1028,11 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                                    ExtraArgs={'StorageClass': storage, 'ContentType': content_type},
                                    Callback=progress_tracker)
             except Exception as e:
-                print(f"Error subiendo {s3_key}: {e}")
+                print(f"Error {s3_key}: {e}")
 
-        self.after(0, lambda: self.prog_label.configure(text=f"¡Carga completa! Total: {round(total_size_bytes/(1024*1024), 2)} MB"))
+        self.after(0, lambda: self.prog_label.configure(text=f"{t('msg_upload_complete')}{round(total_size_bytes/(1024*1024), 2)} MB"))
         self.after(0, lambda: self.enter_bucket(self.current_bucket))
-        self.after(0, lambda: messagebox.showinfo("Éxito", f"Se subieron {total_files} elementos exitosamente."))
+        self.after(0, lambda: messagebox.showinfo(t("msg_success_title"), f"{t('msg_uploaded_count_1')}{total_files}{t('msg_uploaded_count_2')}"))
 
 if __name__ == "__main__":
     app = S3UniversalApp()
