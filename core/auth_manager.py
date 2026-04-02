@@ -11,7 +11,7 @@ class AuthManager:
         self.rg_memory = ""
 
     def load_session(self):
-        """Intenta recuperar sesión válida en memoria cache de Keyring y config."""
+        """Attempts to recover a valid session from Keyring cache and config."""
         if not os.path.exists(self.config_path):
             return None
         try:
@@ -22,7 +22,7 @@ class AuthManager:
             rg = c.get("rg", "us-east-1")
             if last_date_str and saved_ak:
                 last_date = datetime.fromisoformat(last_date_str)
-                # Verifica los 90 días de validez
+                # Verify 90-day validity
                 if datetime.now() - last_date < timedelta(days=90):
                     sk = keyring.get_password("s3_uploader", saved_ak)
                     if sk:
@@ -35,7 +35,7 @@ class AuthManager:
         return None
 
     def save_session(self, ak, sk, rg):
-        """Almacena la sesión permanentemente renovando los 90 días."""
+        """Stores the session permanently, renewing the 90-day threshold."""
         try:
             keyring.set_password("s3_uploader", ak, sk)
         except Exception:
@@ -61,7 +61,7 @@ class AuthManager:
         return True
 
     def clear_session(self):
-        """Borra la memoria de forma segura destruyendo Keyring y JSON."""
+        """Safely clears memory by destroying Keyring entry and JSON config."""
         if self.ak_memory:
             try:
                 keyring.delete_password("s3_uploader", self.ak_memory)
