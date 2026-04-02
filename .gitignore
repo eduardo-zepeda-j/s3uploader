@@ -1,23 +1,49 @@
-### ENV (Variables de Entorno) ###
-# Ignorar el archivo de variables principal
+# Entornos Locales / Custom
+awsEnviroment/
+venv_estable/
+
+# Variables de Entorno
 .env
-
-# Ignorar archivos de entorno específicos de desarrollo/local
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-__pycache__
-awsEnviroment
-venv_estable
-
-# Ignorar cualquier archivo que termine en .env
+.env.*
 *.env
-
-# Ignorar archivos de respaldo o temporales de editores
 .env.bak
 .env.old
-
-### EXCEPCIÓN (Recomendado) ###
-# No ignorar el archivo de ejemplo para que otros sepan qué variables necesitan
 !.env.example
+
+# Python y Compilaciones
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Construcción de PyInstaller
+build/
+dist/
+*.spec
+
+# Entornos Virtuales
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Sistema Operativo
+.DS_Store
+.DS_Store*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editores y Entornos de Desarrollo
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.pydevproject
+
+# Archivos Temporales / Logs
+*.log
+*.sqlite3

@@ -33,7 +33,7 @@ class MoveModal(ctk.CTkToplevel):
 
     def init_ui(self):
         # 1. Top - Breadcrumbs
-        self.nav_frame = ctk.CTkFrame(self, height=40, fg_color=("#F3F4F6", "#0B0C10"), corner_radius=0)
+        self.nav_frame = ctk.CTkFrame(self, height=40, fg_color=("#E5E7EB", "#0B0C10"), corner_radius=0)
         self.nav_frame.pack(fill="x", side="top")
         
         self.breadcrumbs_frame = ctk.CTkFrame(self.nav_frame, fg_color="transparent")
@@ -43,7 +43,7 @@ class MoveModal(ctk.CTkToplevel):
         self.body_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.body_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.shortcuts_frame = ctk.CTkScrollableFrame(self.body_frame, width=150, fg_color=("#F9FAFB", "#111827"))
+        self.shortcuts_frame = ctk.CTkScrollableFrame(self.body_frame, width=150, fg_color=("#E5E7EB", "#111827"))
         self.shortcuts_frame.pack(side="left", fill="y", padx=(0, 10))
 
         self.explorer_frame = ctk.CTkScrollableFrame(self.body_frame, fg_color=("#FFFFFF", "#1F2937"))
@@ -56,7 +56,7 @@ class MoveModal(ctk.CTkToplevel):
         self.lbl_target = ctk.CTkLabel(self.footer_frame, text="Destino: Raíz /", font=("Helvetica Neue", 12, "bold"))
         self.lbl_target.pack(side="left")
 
-        self.btn_move = ctk.CTkButton(self.footer_frame, text="🚚 Mover Aquí", fg_color=("#E5E7EB", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 14, "bold"), command=self.perform_move)
+        self.btn_move = ctk.CTkButton(self.footer_frame, text="🚚 Mover Aquí", fg_color=("#E5E7EB", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 14, "bold"), command=self.perform_move)
         self.btn_move.pack(side="right")
         
         self.update_breadcrumbs()
@@ -74,7 +74,7 @@ class MoveModal(ctk.CTkToplevel):
                 bname = b['Name']
                 cmd = lambda name=bname: self.load_directory(name, "")
                 btn = ctk.CTkButton(self.shortcuts_frame, text="🪣 " + bname, fg_color="transparent", 
-                                    text_color=("#4B5563", "#9CA3AF"), hover_color=("#E5E7EB", "#374151"), anchor="w", command=cmd)
+                                    text_color=("#4B5563", "#9CA3AF"), hover_color=("#D1D5DB", "#374151"), anchor="w", command=cmd)
                 btn.pack(fill="x", pady=2)
         except Exception as e:
             print("Error listando buckets:", e)
@@ -101,7 +101,7 @@ class MoveModal(ctk.CTkToplevel):
                     
                     card = ctk.CTkFrame(self.explorer_frame, fg_color="transparent")
                     card.pack(fill="x", pady=2, padx=5)
-                    btn = ctk.CTkButton(card, text="📂 " + folder_name, fg_color="transparent", hover_color=("#E5E7EB", "#374151"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 13), anchor="w", command=cmd)
+                    btn = ctk.CTkButton(card, text="📂 " + folder_name, fg_color="transparent", hover_color=("#D1D5DB", "#374151"), text_color=("#111827", "#F9FAFB"), font=("Helvetica Neue", 13), anchor="w", command=cmd)
                     btn.pack(fill="x", expand=True)
             else:
                  ctk.CTkLabel(self.explorer_frame, text="No hay subcarpetas.").pack(pady=20)
@@ -113,7 +113,7 @@ class MoveModal(ctk.CTkToplevel):
         for widget in self.breadcrumbs_frame.winfo_children(): widget.destroy()
 
         if self.current_bucket:
-             btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="transparent", text_color="#E86E12", hover_color="#333",
+             btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="transparent", text_color=("#C45605", "#E86E12"), hover_color=("#D1D5DB", "#333333"),
                                         command=lambda: self.load_directory(self.current_bucket, ""))
              btn_bucket.pack(side="left", padx=2)
 
@@ -123,10 +123,10 @@ class MoveModal(ctk.CTkToplevel):
                  
                  for i, part in enumerate(parts):
                      accumulated_path += part + "/"
-                     ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color="gray").pack(side="left", padx=2)
+                     ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color=("#6B7280", "gray")).pack(side="left", padx=2)
                      def go_path(p=accumulated_path):
                          self.load_directory(self.current_bucket, p)
-                     btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color="transparent", text_color="#4DA6FF", hover_color="#333", command=go_path)
+                     btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color="transparent", text_color=("#0066CC", "#4DA6FF"), hover_color=("#D1D5DB", "#333333"), command=go_path)
                      btn_part.pack(side="left", padx=2)
 
     def perform_move(self):

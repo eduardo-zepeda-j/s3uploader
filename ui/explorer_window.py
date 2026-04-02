@@ -15,7 +15,21 @@ from tkinterdnd2 import TkinterDnD, DND_FILES
 from core.auth_manager import AuthManager
 from core.s3_manager import S3Manager
 from ui.login_window import LoginWindow
+from ui.move_modal import MoveModal
 from utils.helpers import resource_path, get_download_dir
+
+FILE_ICONS = [
+    (['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'], "🎵", ("#107c10", "#1DB954")),
+    (['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv'], "🎬", ("#cc3300", "#FF4500")),
+    (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'], "🖼️", ("#b38b00", "#FFD700")),
+    (['pdf'], "📕", ("#cc0000", "#F40F02")),
+    (['doc', 'docx'], "📝", ("#1e3b70", "#2B579A")),
+    (['xls', 'xlsx', 'csv'], "📊", ("#154c2a", "#217346")),
+    (['ppt', 'pptx'], "📉", ("#b33c20", "#D24726")),
+    (['txt', 'md', 'py', 'json', 'xml'], "📄", ("#444444", "#CCCCCC")),
+    (['zip', 'rar', '7z', 'tar', 'gz'], "📦", ("#800000", "#A52A2A"))
+]
+EXT_MAP = {ext: (icon, color) for exts, icon, color in FILE_ICONS for ext in exts}
 
 class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(self):
@@ -41,6 +55,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         
         self.view_mode = "grid"
         self.thumbnail_cache = []
+        self.delete_password = "5834"
         
         self.load_session()
         self.init_ui()
@@ -72,15 +87,18 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def init_ui(self):
         # --- Sidebar ---
-        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color=("#F3F4F6", "#0B0C10"))
+        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color=("#E5E7EB", "#0B0C10"))
         self.sidebar.pack(side="left", fill="y")
 
         ctk.CTkLabel(self.sidebar, text="Mis Repositorios", font=("Helvetica Neue", 20, "bold"), text_color=("#111827", "#F9FAFB")).pack(pady=(30, 10))
         self.sidebar_buckets_frame = ctk.CTkScrollableFrame(self.sidebar, fg_color="transparent")
         self.sidebar_buckets_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
-        self.btn_refresh_buckets = ctk.CTkButton(self.sidebar, text="↻ Refrescar", font=("Helvetica Neue", 13, "bold"), fg_color=("#E5E7EB", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#374151", "#E5E7EB"), command=self.populate_sidebar_buckets)
+        self.btn_refresh_buckets = ctk.CTkButton(self.sidebar, text="↻ Refrescar", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#374151", "#E5E7EB"), command=self.populate_sidebar_buckets)
         self.btn_refresh_buckets.pack(pady=10, padx=20, fill="x")
+
+        self.btn_change_pass = ctk.CTkButton(self.sidebar, text="🔑 Cambiar PIN de Borrado", font=("Helvetica Neue", 13, "bold"), fg_color="transparent", hover_color=("#D1D5DB", "#1F2937"), text_color=("#374151", "#E5E7EB"), command=self.change_password_task)
+        self.btn_change_pass.pack(pady=(0, 10), padx=20, fill="x")
 
         self.theme_switch = ctk.CTkSwitch(self.sidebar, text="Modo Claro", font=("Helvetica Neue", 13), command=self.toggle_theme)
         self.theme_switch.pack(side="bottom", pady=25)
@@ -93,8 +111,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         ctk.CTkLabel(self.sidebar, text="Clase de Almacenamiento", font=("Helvetica Neue", 12, "bold"), text_color=("#6B7280", "#9CA3AF")).pack(side="bottom", pady=(15,0))
 
         # --- Main View ---
-        self.main_view = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#111827"), corner_radius=0)
-        self.main_view.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        self.main_view = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#1F2937"), corner_radius=0)
+        self.main_view.pack(side="right", fill="both", expand=True)
 
         # Navegación Superior
         # Navegación Superior (Breadcrumbs)
@@ -128,16 +146,19 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.btn_download_sel = ctk.CTkButton(self.actions_frame, text="⬇ Descargar Slc.", font=("Helvetica Neue", 13, "bold"), command=self.download_selected_items, fg_color=("#D1FAE5", "#064E3B"), hover_color=("#A7F3D0", "#065F46"), text_color=("#065F46", "#34D399"), width=130)
         self.btn_download_sel.pack(side="left", padx=8)
 
-        self.btn_up_files = ctk.CTkButton(self.actions_frame, text="+ Subir Archivos", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("files"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), text_color=("#111827", "#F9FAFB"))
+        self.btn_move_sel = ctk.CTkButton(self.actions_frame, text="🚚 Mover Slc.", font=("Helvetica Neue", 13, "bold"), command=self.move_selected_items, fg_color=("#DBEAFE", "#1E3A8A"), hover_color=("#BFDBFE", "#1E40AF"), text_color=("#1E40AF", "#60A5FA"), width=110)
+        self.btn_move_sel.pack(side="left", padx=8)
+
+        self.btn_up_files = ctk.CTkButton(self.actions_frame, text="+ Subir Archivos", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("files"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
         self.btn_up_files.pack(side="left", padx=8)
 
-        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text="+ Subir Carpeta", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("folder"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), text_color=("#111827", "#F9FAFB"))
+        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text="+ Subir Carpeta", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("folder"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), text_color=("#111827", "#F9FAFB"))
         self.btn_up_folder.pack(side="left", padx=8)
 
         self.btn_new_folder = ctk.CTkButton(self.actions_frame, text="+ Nueva Carpeta", font=("Helvetica Neue", 13, "bold"), fg_color=("#FEF3C7", "#78350F"), hover_color=("#FDE68A", "#92400E"), text_color=("#92400E", "#FDE68A"), command=self.create_folder_task)
         self.btn_new_folder.pack(side="left", padx=8)
 
-        self.btn_view_mode = ctk.CTkButton(self.actions_frame, text="Visión: Cuadrícula", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
+        self.btn_view_mode = ctk.CTkButton(self.actions_frame, text="Visión: Cuadrícula", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
         self.btn_view_mode.pack(side="right", padx=15)
 
         # Progreso
@@ -182,6 +203,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             except: pass
         config["last_bucket"] = self.current_bucket
         config["last_prefix"] = self.current_prefix
+        config["delete_password"] = self.delete_password
         with open(self.config_path, "w") as f:
             json.dump(config, f)
 
@@ -192,6 +214,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     c = json.load(f)
                     self.current_bucket = c.get("last_bucket")
                     self.current_prefix = c.get("last_prefix", "")
+                    self.delete_password = c.get("delete_password", "5834")
             except: pass
 
 
@@ -232,7 +255,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 bname = b['Name']
                 cmd = lambda name=bname: self.enter_bucket_from_sidebar(name)
                 btn = ctk.CTkButton(self.sidebar_buckets_frame, text="🪣 " + bname, fg_color="transparent", 
-                                    text_color="#AAAAAA", hover_color="#333", anchor="w", command=cmd)
+                                    text_color=("#4B5563", "#AAAAAA"), hover_color=("#D1D5DB", "#333333"), anchor="w", command=cmd)
                 btn.pack(fill="x", pady=2)
         except Exception as e:
             print("Error listando buckets:", e)
@@ -247,12 +270,12 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             widget.destroy()
 
         # Botón "Inicio" (Lista de Buckets)
-        btn_home = ctk.CTkButton(self.breadcrumbs_frame, text="🏠 Inicio", width=30, fg_color="transparent", text_color="#AAAAAA", hover_color="#333", command=self.list_buckets)
+        btn_home = ctk.CTkButton(self.breadcrumbs_frame, text="🏠 Inicio", width=30, fg_color="transparent", text_color=("#4B5563", "#AAAAAA"), hover_color=("#E5E7EB", "#333333"), command=self.list_buckets)
         btn_home.pack(side="left", padx=2)
 
         if self.current_bucket:
              # Separador
-             ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color="gray").pack(side="left", padx=2)
+             ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color=("#6B7280", "gray")).pack(side="left", padx=2)
              
              # Botón Bucket
              if not self.current_prefix:
@@ -260,7 +283,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                  btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="#E86E12", text_color="white", hover=False)
              else:
                  # Bucket es un paso previo
-                 btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="transparent", text_color="#E86E12", hover_color="#333",
+                 btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="transparent", text_color=("#C45605", "#E86E12"), hover_color=("#D1D5DB", "#333333"),
                                             command=lambda: self.enter_bucket(self.current_bucket))
                  
                  # Resetear prefix temporalmente para navegar al root del bucket si se da click
@@ -279,22 +302,29 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                  
                  for i, part in enumerate(parts):
                      accumulated_path += part + "/"
-                     ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color="gray").pack(side="left", padx=2)
+                     ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color=("#6B7280", "gray")).pack(side="left", padx=2)
                      
                      is_last = (i == len(parts) - 1)
                      
                      if is_last:
                          # Carpeta actual (activa) - Sin comando
-                         btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color="#4DA6FF", text_color="white", hover=False)
+                         btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color=("#0066CC", "#4DA6FF"), text_color="white", hover=False)
                      else:
                          # Carpeta padre - Navegable
                          def go_path(p=accumulated_path):
                              self.current_prefix = p
                              self.enter_bucket(self.current_bucket)
                          
-                         btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color="transparent", text_color="#4DA6FF", hover_color="#333", command=go_path)
+                         btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color="transparent", text_color=("#0066CC", "#4DA6FF"), hover_color=("#D1D5DB", "#333333"), command=go_path)
                      
                      btn_part.pack(side="left", padx=2)
+
+    def toggle_selection(self, item_type, name, full_path):
+        item = (full_path, item_type, name)
+        if item in self.selected_items:
+            self.selected_items.remove(item)
+        else:
+            self.selected_items.add(item)
 
     def clear_list_frame(self):
         self.grid_idx = 0  # Reset counter
@@ -321,6 +351,17 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         for widget in getattr(self, 'file_list_frame', ctk.CTkFrame(self)).winfo_children(): widget.destroy()
         self.withdraw()
         LoginWindow(self, self.on_login_success)
+
+    def change_password_task(self):
+        curr_pwd = ctk.CTkInputDialog(text="Ingresa el PIN actual:", title="Seguridad").get_input()
+        if curr_pwd == self.delete_password:
+            new_pwd = ctk.CTkInputDialog(text="Ingresa el NUEVO PIN:", title="Nuevo PIN").get_input()
+            if new_pwd:
+                self.delete_password = new_pwd
+                self.save_session()
+                messagebox.showinfo("Éxito", "PIN actualizado correctamente.")
+        elif curr_pwd is not None:
+            messagebox.showerror("Error", "PIN actual incorrecto.")
 
     def list_buckets(self):
         self.current_bucket = None
@@ -626,8 +667,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         col = self.grid_idx % self.columns_per_row
         self.grid_idx += 1
 
-        card_color = ("#FFF7ED", "#451A03") if type == "bucket" else (("#EFF6FF", "#172554") if type == "folder" else ("#FFFFFF", "#1F2937"))
-        border_color = ("#FDE68A", "#78350F") if type == "bucket" else (("#BFDBFE", "#1E3A8A") if type == "folder" else ("#E5E7EB", "#374151"))
+        card_color = ("#FFF7ED", "#451A03") if type == "bucket" else (("#EFF6FF", "#172554") if type == "folder" else ("#F3F4F6", "#2A374A"))
+        border_color = ("#FDE68A", "#78350F") if type == "bucket" else (("#BFDBFE", "#1E3A8A") if type == "folder" else ("#D1D5DB", "#374151"))
             
         card = ctk.CTkFrame(self.file_list_frame, corner_radius=12, fg_color=card_color, border_width=1, border_color=border_color)
         
@@ -674,16 +715,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             
         elif type == "file":
              ext_norm = ext.lower().strip('.') if ext else ""
-             if ext_norm in ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a']: icon, icon_color = "🎵", ("#107c10", "#1DB954")
-             elif ext_norm in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv']: icon, icon_color = "🎬", ("#cc3300", "#FF4500")
-             elif ext_norm in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp']: icon, icon_color = "🖼️", ("#b38b00", "#FFD700")
-             elif ext_norm in ['pdf']: icon, icon_color = "📕", ("#cc0000", "#F40F02")
-             elif ext_norm in ['doc', 'docx']: icon, icon_color = "📝", ("#1e3b70", "#2B579A")
-             elif ext_norm in ['xls', 'xlsx', 'csv']: icon, icon_color = "📊", ("#154c2a", "#217346")
-             elif ext_norm in ['ppt', 'pptx']: icon, icon_color = "📉", ("#b33c20", "#D24726")
-             elif ext_norm in ['txt', 'md', 'py', 'json', 'xml']: icon, icon_color = "📄", ("#444444", "#CCCCCC")
-             elif ext_norm in ['zip', 'rar', '7z', 'tar', 'gz']: icon, icon_color = "📦", ("#800000", "#A52A2A")
-             else: icon, icon_color = "📄", ("#666666", "#999999")
+             icon, icon_color = EXT_MAP.get(ext_norm, ("📄", ("#666666", "#999999")))
         
         font_size = 24 if self.view_mode == "list" else (56 if type == "bucket" else 48)
 
@@ -710,6 +742,12 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     lbl_size.pack(side="left", padx=15)
                 actions_inner = ctk.CTkFrame(content_frame, fg_color="transparent")
                 actions_inner.pack(side="right", padx=10)
+                
+                btn_move = ctk.CTkButton(actions_inner, text="🚚", width=30, fg_color="transparent", text_color="#107C10", hover_color="#333", command=lambda p=full_path, n=name: self.open_move_modal([(p, type, n)]))
+                btn_move.pack(side="left", padx=2)
+                
+                btn_rename = ctk.CTkButton(actions_inner, text="✏️", width=30, fg_color="transparent", text_color="#107C10", hover_color="#333", command=lambda p=full_path, n=name: self.rename_task(p, type, n))
+                btn_rename.pack(side="left", padx=2)
         else:
             btn_icon.pack(side="top", pady=(15, 5), expand=True)
             lbl_name = ctk.CTkLabel(content_frame, text=name, font=("Helvetica Neue", 13, "bold"), text_color=("#111827", "#F9FAFB"), wraplength=140, justify="center")
@@ -745,7 +783,49 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                                              command=lambda: self.copy_link(full_path), corner_radius=6)
                     btn_link.pack(side="right", padx=3)
 
+    def open_move_modal(self, items_to_move):
+        if not items_to_move:
+            messagebox.showwarning("Aviso", "No hay elementos para mover.")
+            return
+        MoveModal(self, self.s3_manager, items_to_move, self.current_bucket, self.current_prefix, self.execute_move)
 
+    def move_selected_items(self):
+        self.open_move_modal(self.selected_items)
+
+    def execute_move(self, items, tgt_bucket, tgt_prefix):
+        self.prog_bar.set(0)
+        self.prog_label.configure(text=f"Moviendo {len(items)} ítems...")
+        self.prog_bar.configure(mode="indeterminate")
+        self.prog_bar.start()
+        
+        # Disable buttons temporarily
+        self.btn_move_sel.configure(state="disabled")
+        
+        threading.Thread(target=self.hilo_bulk_move, args=(items, tgt_bucket, tgt_prefix), daemon=True).start()
+
+    def hilo_bulk_move(self, items, tgt_bucket, tgt_prefix):
+        try:
+            for item in items:
+                src_path, item_type, current_name = item
+                new_key = tgt_prefix + current_name
+                
+                if item_type == "folder":
+                    if not new_key.endswith('/'): new_key += '/'
+                    self.s3_manager.move_folder(self.current_bucket, src_path, tgt_bucket, new_key)
+                else:
+                    self.s3_manager.move_object(self.current_bucket, src_path, tgt_bucket, new_key)
+            
+            # Reset selection and refresh UI
+            self.selected_items.clear()
+            self.after(0, lambda: self.enter_bucket(self.current_bucket))
+            self.after(0, lambda: messagebox.showinfo("Mover Completo", f"Los objetos fueron movidos exitosamente a {tgt_bucket}/{tgt_prefix}."))
+        except Exception as e:
+            self.after(0, lambda err=e: messagebox.showerror("Error al mover", str(err)))
+        finally:
+            self.after(0, self.prog_bar.stop)
+            self.after(0, lambda: self.prog_bar.configure(mode="determinate"))
+            self.after(0, lambda: self.prog_label.configure(text="Listo"))
+            self.after(0, lambda: self.btn_move_sel.configure(state="normal"))
 
     def request_rename(self, name, type, full_path):
         import threading
@@ -799,26 +879,19 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def request_delete(self, name, type, full_path):
         pwd = ctk.CTkInputDialog(text=f"Pass para borrar '{name}':", title="Seguridad").get_input()
-        if pwd == "5834":
+        if pwd == self.delete_password:
             if messagebox.askyesno("Confirmar Eliminación", f"¿Estás SEGURO de eliminar definitivamente:\n\n{name}\n\nEsta acción no se puede deshacer?"):
-                ak = self.ak_memory
-                sk = self.sk_memory
-                rg = self.rg_memory
-                if not rg: rg = "us-east-1"
-                creds = (ak, sk, rg)
                 target_bucket = self.current_bucket
                 target_prefix = self.current_prefix
                 import threading
-                threading.Thread(target=self.perform_delete, args=(full_path, type, creds, target_bucket, target_prefix), daemon=True).start()
+                threading.Thread(target=self.perform_delete, args=(full_path, type, target_bucket, target_prefix), daemon=True).start()
 
-    def perform_delete(self, key, type, creds, target_bucket, target_prefix):
+    def perform_delete(self, key, type, target_bucket, target_prefix):
         try:
             if type == "folder":
-                ak, sk, rg = creds
-                s3_resource = boto3.resource('s3', aws_access_key_id=ak, aws_secret_access_key=sk, region_name=rg)
-                s3_resource.Bucket(target_bucket).objects.filter(Prefix=key).delete()
+                self.s3_manager.delete_folder(target_bucket, key)
             else:
-                self.s3_manager.client.delete_object(Bucket=target_bucket, Key=key)
+                self.s3_manager.delete_file(target_bucket, key)
             
             if self.current_bucket == target_bucket and self.current_prefix == target_prefix:
                 self.after(0, lambda: self.enter_bucket(self.current_bucket))
