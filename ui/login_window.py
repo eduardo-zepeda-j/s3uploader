@@ -1,11 +1,12 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
+from core.i18n import t
 
 class LoginWindow(ctk.CTkToplevel, TkinterDnD.DnDWrapper):
     def __init__(self, master, on_success_callback):
         super().__init__(master)
-        self.title("Inicio de Sesión AWS")
+        self.title(t("login_title"))
         self.geometry("400x450")
         self.resizable(False, False)
         self.grab_set()
@@ -19,21 +20,21 @@ class LoginWindow(ctk.CTkToplevel, TkinterDnD.DnDWrapper):
         except Exception as e:
             print("No DnD mode available:", e)
         
-        ctk.CTkLabel(self, text="Configuración AWS\n(Arrastra aquí tu CSV)", font=("Helvetica", 16, "bold")).pack(pady=20)
+        ctk.CTkLabel(self, text=t("login_subtitle"), font=("Helvetica", 16, "bold")).pack(pady=20)
         
-        self.btn_csv = ctk.CTkButton(self, text="Cargar CSV de Credenciales", command=self.load_csv)
+        self.btn_csv = ctk.CTkButton(self, text=t("load_csv_btn"), command=self.load_csv)
         self.btn_csv.pack(pady=10)
         
-        ctk.CTkLabel(self, text="O ingresa manualmente:", font=("Helvetica", 12)).pack(pady=(10, 0))
+        ctk.CTkLabel(self, text=t("or_manual_entry"), font=("Helvetica", 12)).pack(pady=(10, 0))
         
-        self.entry_ak = ctk.CTkEntry(self, placeholder_text="Access Key", show="*")
+        self.entry_ak = ctk.CTkEntry(self, placeholder_text=t("ph_access_key"), show="*")
         self.entry_ak.pack(pady=10, padx=20, fill="x")
-        self.entry_sk = ctk.CTkEntry(self, placeholder_text="Secret Key", show="*")
+        self.entry_sk = ctk.CTkEntry(self, placeholder_text=t("ph_secret_key"), show="*")
         self.entry_sk.pack(pady=10, padx=20, fill="x")
-        self.entry_rg = ctk.CTkEntry(self, placeholder_text="Región (ej. us-east-1)")
+        self.entry_rg = ctk.CTkEntry(self, placeholder_text=t("ph_region"))
         self.entry_rg.pack(pady=10, padx=20, fill="x")
         
-        self.btn_connect = ctk.CTkButton(self, text="Conectar", command=self.attempt_login)
+        self.btn_connect = ctk.CTkButton(self, text=t("btn_connect"), command=self.attempt_login)
         self.btn_connect.pack(pady=20, padx=20)
         
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -48,11 +49,11 @@ class LoginWindow(ctk.CTkToplevel, TkinterDnD.DnDWrapper):
         if paths and paths[0].lower().endswith('.csv'):
             self.process_csv_path(paths[0])
         else:
-            messagebox.showinfo("Error", "Arrastra únicamente un archivo .csv", parent=self)
+            messagebox.showinfo("Error", t("err_drop_csv_only"), parent=self)
 
     def load_csv(self):
         from tkinter import filedialog
-        file_path = filedialog.askopenfilename(filetypes=[("Archivos CSV", "*.csv")])
+        file_path = filedialog.askopenfilename(filetypes=[(t("csv_files"), "*.csv")])
         if file_path:
             self.process_csv_path(file_path)
 
@@ -75,9 +76,9 @@ class LoginWindow(ctk.CTkToplevel, TkinterDnD.DnDWrapper):
                         self.entry_ak.insert(0, row[ak_idx].strip())
                         self.entry_sk.delete(0, "end")
                         self.entry_sk.insert(0, row[sk_idx].strip())
-                        messagebox.showinfo("Credenciales", "Credenciales cargadas.", parent=self)
+                        messagebox.showinfo(t("title_credentials"), t("msg_credentials_loaded"), parent=self)
         except Exception as e:
-            messagebox.showerror("Error CSV", str(e), parent=self)
+            messagebox.showerror(t("err_csv"), str(e), parent=self)
 
     def attempt_login(self):
         ak = self.entry_ak.get().strip()

@@ -1,0 +1,121 @@
+<resources>
+    <!-- Login -->
+    <string name="login_title">AWS Login</string>
+    <string name="login_subtitle">AWS Configuration\n(Drag your CSV here)</string>
+    <string name="load_csv_btn">Load Credentials CSV</string>
+    <string name="or_manual_entry">Or enter manually:</string>
+    <string name="ph_access_key">Access Key</string>
+    <string name="ph_secret_key">Secret Key</string>
+    <string name="ph_region">Region (e.g., us-east-1)</string>
+    <string name="btn_connect">Connect</string>
+    <string name="err_drop_csv_only">Drag only a .csv file</string>
+    <string name="csv_files">CSV Files</string>
+    <string name="title_credentials">Credentials</string>
+    <string name="msg_credentials_loaded">Credentials loaded.</string>
+    <string name="err_csv">CSV Error</string>
+
+    <!-- Modal Move -->
+    <string name="move_modal_title">Choose File Destination</string>
+    <string name="lbl_target_root">Target: Root /</string>
+    <string name="btn_move_here">🚚 Move Here</string>
+    <string name="lbl_target_prefix">Target: </string>
+    <string name="lbl_none">None</string>
+    <string name="lbl_buckets">Buckets</string>
+    <string name="lbl_no_subfolders">No subfolders.</string>
+    <string name="lbl_error">Error</string>
+    <string name="msg_null_target_title">Null target</string>
+    <string name="msg_select_target_bucket">Select a target Bucket.</string>
+    <string name="msg_move_title">Move</string>
+    <string name="msg_same_origin_dest">Origin and target are the same.</string>
+    <string name="btn_processing">Processing...</string>
+
+    <!-- UI Main -->
+    <string name="app_title">s3Uploader V1 - By Eduardo Zepeda</string>
+    <string name="warn_no_icon">Warning: Icon not found at </string>
+    <string name="err_loading_icon">Error loading icon: </string>
+    <string name="lbl_my_repos">My Repositories</string>
+    <string name="btn_refresh">↻ Refresh</string>
+    <string name="btn_change_pin">🔑 Change Delete PIN</string>
+    <string name="sw_light_mode">Light Mode</string>
+    <string name="sw_dark_mode">Dark Mode</string>
+    <string name="btn_logout">🚪 Logout</string>
+    <string name="lbl_storage_class">Storage Class</string>
+    <string name="lbl_language">Language / Idioma</string>
+    
+    <string name="btn_download_sel">⬇ Download Sel.</string>
+    <string name="btn_move_sel">🚚 Move Sel.</string>
+    <string name="btn_up_files">+ Upload Files</string>
+    <string name="btn_up_folder">+ Upload Folder</string>
+    <string name="btn_new_folder">+ New Folder</string>
+    <string name="btn_view_grid">View: Grid</string>
+    <string name="btn_view_list">View: List</string>
+    <string name="lbl_ready">Ready</string>
+    
+    <string name="msg_attention_title">Attention</string>
+    <string name="msg_connect_select_bucket">Connect and select a Bucket first.</string>
+    <string name="msg_confirm_upload_title">Confirm Upload</string>
+    <string name="msg_confirm_upload_text_1">Do you want to upload </string>
+    <string name="msg_confirm_upload_text_2"> item(s)?</string>
+    
+    <string name="msg_enter_current_pin">Enter current PIN:</string>
+    <string name="msg_security_title">Security</string>
+    <string name="msg_enter_new_pin">Enter NEW PIN:</string>
+    <string name="msg_new_pin_title">New PIN</string>
+    <string name="msg_success_title">Success</string>
+    <string name="msg_pin_updated">PIN updated successfully.</string>
+    <string name="msg_incorrect_pin">Incorrect current PIN.</string>
+    
+    <string name="btn_home">🏠 Home</string>
+    <string name="msg_lang_change_title">Language Change</string>
+    <string name="msg_restart_for_lang">Please restart the application to fully apply the language change.</string>
+    
+    <string name="msg_copied_title">Copied</string>
+    <string name="msg_link_copied">Presigned link copied to clipboard (Valid for 7 days).</string>
+    <string name="msg_no_downloads_folder">Could not detect downloads folder.</string>
+    <string name="msg_empty_sel_title">Empty Selection</string>
+    <string name="msg_select_at_least_one">Select at least one file or folder.</string>
+    
+    <string name="msg_starting_bulk_down_1">Starting bulk download of </string>
+    <string name="msg_starting_bulk_down_2"> items into </string>
+    <string name="msg_bulk_down_title">Bulk Download</string>
+    <string name="msg_downloaded_count_1">Downloaded </string>
+    <string name="msg_downloaded_count_2"> files successfully.</string>
+    <string name="msg_calc_total_size">Calculating total size...</string>
+    <string name="msg_starting_download">Starting download of</string>
+    <string name="msg_downloading">Downloading</string>
+    <string name="msg_download_success_title">Download Successful</string>
+    <string name="msg_file_saved_at">File saved in</string>
+    <string name="msg_download_complete">Download Complete</string>
+    <string name="msg_download_error_title">Download Error</string>
+    <string name="msg_download_error">Download error</string>
+    <string name="msg_fail_start_download">Failed to start download</string>
+    <string name="msg_error_link">Link error</string>
+    
+    <string name="msg_bulk_down_complete">Bulk download completed</string>
+    
+    <string name="msg_move_complete_title">Move Completed</string>
+    <string name="msg_objects_moved_to">Objects successfully moved to </string>
+    <string name="msg_err_moving_title">Error moving</string>
+    <string name="msg_new_name_for">New name for \'</string>
+    <string name="msg_extension_1">\'\n(The extension </string>
+    <string name="msg_extension_2"> will be kept):</string>
+    <string name="msg_rename_title">Rename</string>
+    <string name="msg_new_folder_name_for">New folder name for \'</string>
+    <string name="msg_renaming_1">Renaming \'</string>
+    <string name="msg_renaming_2">\' to \'</string>
+    <string name="msg_err_renaming_title">Error Renaming</string>
+    
+    <string name="msg_pass_to_delete">PIN to delete \'</string>
+    <string name="msg_confirm_del_title">Confirm Deletion</string>
+    <string name="msg_sure_to_delete_1">Are you SURE you want to permanently delete:\n\n</string>
+    <string name="msg_sure_to_delete_2">\n\nThis action cannot be undone.</string>
+    <string name="msg_incorrect_pass">The entered password is incorrect.</string>
+    
+    <string name="msg_folder_name_input">Name:</string>
+    <string name="msg_new_folder_title">New Folder</string>
+    <string name="msg_uploading">Uploading... </string>
+    <string name="msg_upload_complete">Upload complete! Total: </string>
+    <string name="msg_uploaded_count_1">Uploaded </string>
+    <string name="msg_uploaded_count_2"> items successfully.</string>
+    <string name="msg_no_parent_dir">Parent directory does not exist.</string>
+</resources>
