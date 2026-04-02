@@ -885,6 +885,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 target_prefix = self.current_prefix
                 import threading
                 threading.Thread(target=self.perform_delete, args=(full_path, type, target_bucket, target_prefix), daemon=True).start()
+        elif pwd is not None:
+            messagebox.showerror("Error de Seguridad", "La contraseña ingresada es incorrecta")
 
     def perform_delete(self, key, type, target_bucket, target_prefix):
         try:
