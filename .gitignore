@@ -1,0 +1,20 @@
+### ENV (Variables de Entorno) ###
+# Ignorar el archivo de variables principal
+.env
+
+# Ignorar archivos de entorno específicos de desarrollo/local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ignorar cualquier archivo que termine en .env
+*.env
+
+# Ignorar archivos de respaldo o temporales de editores
+.env.bak
+.env.old
+
+### EXCEPCIÓN (Recomendado) ###
+# No ignorar el archivo de ejemplo para que otros sepan qué variables necesitan
+!.env.example
