@@ -1,0 +1,3 @@
+([('S3Uploader_Eduardo',
+   '/Users/sonidonazaret/Desktop/AWS-S3-UPLOADER/dist/S3Uploader_Eduardo',
+   'EXECUTABLE')],)
