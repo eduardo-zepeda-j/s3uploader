@@ -40,11 +40,11 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.geometry("1400x900")
         self.withdraw()
         
-        # Cargar Icono (Versión local)
+        # Load Icon (Local version)
         self.load_app_icon()
 
         # Cross-platform config path
-        # Reemplazamos configuraciones antiguas por AuthManager
+        # Replaced old configurations with AuthManager
         self.auth_manager = AuthManager()
         self.s3_manager = None
 
@@ -60,7 +60,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.load_session()
         self.init_ui()
 
-        # Selección múltiple
+        # Multiple selection
         self.selected_items = set() # Stores tuple: (full_path, type, name)
         self.after(100, self.check_login_status)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -69,17 +69,17 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         import os
         os._exit(0)
 
-    # --- NUEVA VERSIÓN DE CARGA DE ICONO ---
+    # --- NEW ICON LOADING VERSION ---
     def load_app_icon(self):
         try:
-            # Busca el archivo "s3icono.png" que adjuntaremos al compilar
+            # Look for "s3icono.png" attached during compilation
             icon_path = resource_path("s3icono.png")
             
             if os.path.exists(icon_path):
                 image = Image.open(icon_path)
                 self.icon_image = ImageTk.PhotoImage(image)
-                # Establece el icono de la ventana y del Dock en runtime
-                self.iconphoto(True, self.icon_image) 
+                # Set window and Dock icon at runtime
+                self.iconphoto(True, self.icon_image)
             else:
                 print(f"Advertencia: No se encontró el icono en {icon_path}")
         except Exception as e:
@@ -114,32 +114,32 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.main_view = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#1F2937"), corner_radius=0)
         self.main_view.pack(side="right", fill="both", expand=True)
 
-        # Navegación Superior
-        # Navegación Superior (Breadcrumbs)
+        # Top Navigation
+        # Top Navigation (Breadcrumbs)
         self.nav_frame = ctk.CTkFrame(self.main_view, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
         
         self.btn_back = ctk.CTkButton(self.nav_frame, text="⬅", width=40, command=self.go_back, fg_color=("#CCCCCC", "#333333"), hover_color=("#AAAAAA", "#444444"), text_color=("#000000", "#FFFFFF"))
         self.btn_back.pack(side="left", padx=(0, 10))
         
-        # Frame scrollable horizontal para los breadcrumbs por si la ruta es muy larga
+        # Horizontal scrollable frame for breadcrumbs in case path is too long
         self.path_scroll = ctk.CTkScrollableFrame(self.nav_frame, height=40, orientation="horizontal", fg_color="transparent")
         self.path_scroll.pack(side="left", fill="x", expand=True)
         
-        # Contenedor interno para los botones
+        # Internal container for buttons
         self.breadcrumbs_frame = ctk.CTkFrame(self.path_scroll, fg_color="transparent")
         self.breadcrumbs_frame.pack(side="left", fill="y")
 
-        # Lista de Objetos/Buckets (Grid)
+        # Object/Bucket List (Grid)
         self.file_list_frame = ctk.CTkScrollableFrame(self.main_view, fg_color="transparent")
         self.file_list_frame.pack(fill="both", expand=True, pady=10)
         
-        # Configurar columnas del grid para que se expandan
+        # Configure grid columns to expand
         self.columns_per_row = 5
         for i in range(self.columns_per_row):
              self.file_list_frame.grid_columnconfigure(i, weight=1)
 
-        # Botones de Acción
+        # Action Buttons
         self.actions_frame = ctk.CTkFrame(self.main_view, fg_color="transparent")
         self.actions_frame.pack(fill="x", pady=5)
 
@@ -161,14 +161,14 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.btn_view_mode = ctk.CTkButton(self.actions_frame, text="Visión: Cuadrícula", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#374151"), hover_color=("#D1D5DB", "#4B5563"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
         self.btn_view_mode.pack(side="right", padx=15)
 
-        # Progreso
+        # Progress
         self.prog_label = ctk.CTkLabel(self.main_view, text="Listo", font=("Helvetica Neue", 12))
         self.prog_label.pack(pady=4)
         self.prog_bar = ctk.CTkProgressBar(self.main_view, progress_color="#F59E0B", fg_color=("#E5E7EB", "#374151"), height=8)
         self.prog_bar.pack(fill="x", padx=30, pady=(0, 10))
         self.prog_bar.set(0)
 
-        # Habilitar Drop de archivos
+        # Enable File Drop
         self.drop_target_register(DND_FILES)
         self.dnd_bind('<<Drop>>', self.on_drop)
 
@@ -265,29 +265,29 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.enter_bucket(bucket_name)
 
     def update_breadcrumbs(self):
-        # Limpiar breadcrumbs anteriores
+        # Clear previous breadcrumbs
         for widget in self.breadcrumbs_frame.winfo_children():
             widget.destroy()
 
-        # Botón "Inicio" (Lista de Buckets)
+        # Home button (Buckets list)
         btn_home = ctk.CTkButton(self.breadcrumbs_frame, text="🏠 Inicio", width=30, fg_color="transparent", text_color=("#4B5563", "#AAAAAA"), hover_color=("#E5E7EB", "#333333"), command=self.list_buckets)
         btn_home.pack(side="left", padx=2)
 
         if self.current_bucket:
-             # Separador
+             # Separator
              ctk.CTkLabel(self.breadcrumbs_frame, text=">", text_color=("#6B7280", "gray")).pack(side="left", padx=2)
              
-             # Botón Bucket
+             # Bucket Button
              if not self.current_prefix:
-                 # Bucket es el actual (activo)
+                 # Bucket is the current one (active)
                  btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="#E86E12", text_color="white", hover=False)
              else:
-                 # Bucket es un paso previo
+                 # Bucket is a previous step
                  btn_bucket = ctk.CTkButton(self.breadcrumbs_frame, text=self.current_bucket, fg_color="transparent", text_color=("#C45605", "#E86E12"), hover_color=("#D1D5DB", "#333333"),
                                             command=lambda: self.enter_bucket(self.current_bucket))
                  
-                 # Resetear prefix temporalmente para navegar al root del bucket si se da click
-                 # Pero cuidado, el lambda captura variable, así que mejor usar helper
+                 # Temporarily reset prefix to navigate to the bucket root if clicked
+                 # But careful, lambda captures variable, so it's better to use a helper
                  def go_bucket_root(b=self.current_bucket):
                      self.current_prefix = ""
                      self.enter_bucket(b)
@@ -295,7 +295,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
              btn_bucket.pack(side="left", padx=2)
 
-             # Procesar carpetas del prefix
+             # Process prefix folders
              if self.current_prefix:
                  parts = [p for p in self.current_prefix.split('/') if p]
                  accumulated_path = ""
@@ -307,10 +307,10 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                      is_last = (i == len(parts) - 1)
                      
                      if is_last:
-                         # Carpeta actual (activa) - Sin comando
+                         # Current folder (active) - No command
                          btn_part = ctk.CTkButton(self.breadcrumbs_frame, text=part, fg_color=("#0066CC", "#4DA6FF"), text_color="white", hover=False)
                      else:
-                         # Carpeta padre - Navegable
+                         # Parent folder - Navigable
                          def go_path(p=accumulated_path):
                              self.current_prefix = p
                              self.enter_bucket(self.current_bucket)
@@ -328,7 +328,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def clear_list_frame(self):
         self.grid_idx = 0  # Reset counter
-        self.selected_items.clear() # Limpiar selección al cambiar de vista/bucket
+        self.selected_items.clear() # Clear selection when changing view/bucket
         self.thumbnail_cache.clear()
         for widget in self.file_list_frame.winfo_children():
             widget.destroy()
@@ -416,7 +416,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 Params={'Bucket': self.current_bucket, 'Key': full_path}
             )
             static_url = url.split('?')[0]
-            # Reemplazar %20 por + para formato web de AWS
+            # Replace %20 with + for AWS web format
             web_friendly_url = static_url.replace("%20", "+")
             
             self.clipboard_clear()
@@ -428,7 +428,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             messagebox.showerror("Error", f"No se pudo obtener el enlace: {str(e)}")
 
     def _get_download_dir(self):
-        # Obtener carpeta de Descargas del sistema de forma robusta
+        # Powerfully get system Downloads folder
         if os.name == 'nt':
             import ctypes.wintypes
             CSIDL_PERSONAL = 5 
@@ -439,7 +439,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             return buf.value
         else:
             download_dir = ""
-            # 1. Intentar usar xdg-user-dir
+            # 1. Try to use xdg-user-dir
             try:
                 import subprocess
                 result = subprocess.run(['xdg-user-dir', 'DOWNLOAD'], capture_output=True, text=True)
@@ -483,7 +483,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             download_dir = self._get_download_dir()
             local_path = os.path.join(download_dir, file_name)
             
-            # Evitar sobreescritura silenciosa (opcional, pero buena práctica)
+            # Avoid silent overwrite (optional, but good practice)
             if os.path.exists(local_path):
                 base, ext = os.path.splitext(local_path)
                 counter = 1
@@ -494,11 +494,11 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             def perform_download():
                 self.after(0, lambda: self.prog_label.configure(text=f"Iniciando descarga de {file_name}..."))
                 try:
-                    # 1. Obtener tamaño total para calcular porcentaje
+                    # 1. Get total size to calculate percentage
                     head = self.s3_manager.client.head_object(Bucket=self.current_bucket, Key=full_path)
                     total_bytes = head.get('ContentLength', 0)
 
-                    # 2. Clase Callback
+                    # 2. Callback Class
                     class DownloadProgress(object):
                         def __init__(self, total_size, update_ui_callback):
                             self._total = total_size
@@ -522,7 +522,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
                     progress_tracker = DownloadProgress(total_bytes, lambda p, s: self.after(0, update_ui_download, p, s))
 
-                    # 3. Descargar con Callback
+                    # 3. Download with Callback
                     self.s3_manager.client.download_file(self.current_bucket, full_path, local_path, Callback=progress_tracker)
                     
                     self.after(0, lambda: messagebox.showinfo("Descarga Exitosa", f"Archivo guardado en:\n{local_path}"))
@@ -544,7 +544,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             messagebox.showwarning("Selección vacía", "Selecciona al menos un archivo o carpeta.")
             return
 
-        # Destino automático: Carpeta de descargas
+        # Automatic destination: Downloads folder
         dest_dir = self._get_download_dir()
         if not dest_dir: 
              messagebox.showerror("Error", "No se pudo detectar carpeta de descargas.")
@@ -553,24 +553,24 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         threading.Thread(target=self.hilo_bulk_download, args=(dest_dir,), daemon=True).start()
 
     def hilo_bulk_download(self, dest_dir):
-        # 1. Resolver todos los items a descargar (aplanar carpetas)
-        items_to_process = [] # Lista de (s3_key, local_path_abs, s3_size)
+        # 1. Resolve all items to download (flatten folders)
+        items_to_process = [] # List of (s3_key, local_path_abs, s3_size)
         total_bytes = 0
 
         self.after(0, lambda: self.prog_label.configure(text="Calculando tamaño total..."))
 
         try:
-             # Copia de seguridad de items seleccionados
+             # Backup of selected items
              selection = list(self.selected_items)
              
              for (full_path, type, name) in selection:
                  if type == "file":
-                     # Obtener tamaño
+                     # Get size
                      try:
                         head = self.s3_manager.client.head_object(Bucket=self.current_bucket, Key=full_path)
                         sz = head.get('ContentLength', 0)
                         local_tgt = os.path.join(dest_dir, name)
-                        # Manejo de duplicados en root
+                        # Handle duplicates in root
                         base, ext = os.path.splitext(local_tgt)
                         c_dup = 1
                         while os.path.exists(local_tgt):
@@ -582,9 +582,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                      except: pass
                  
                  elif type == "folder":
-                     # Listar recursivo
+                     # Recursive listing
                      paginator = self.s3_manager.client.get_paginator('list_objects_v2')
-                     # La carpeta destino local será dest_dir/nombre_carpeta
+                     # The local destination folder will be dest_dir/folder_name
                      local_folder_root = os.path.join(dest_dir, name)
                      if not os.path.exists(local_folder_root):
                          os.makedirs(local_folder_root, exist_ok=True)
@@ -593,15 +593,15 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                          if 'Contents' in page:
                              for obj in page['Contents']:
                                  k = obj['Key']
-                                 # Skip si es la carpeta misma (marcador de 0 bytes)
+                                 # Skip if it is the folder itself (0 bytes marker)
                                  if k == full_path: continue
                                  
                                  sz = obj['Size']
-                                 # Calcular ruta relativa desde el full_path seleccionado
+                                 # Calculate relative path from the selected full_path
                                  rel_path = os.path.relpath(k, full_path)
                                  local_tgt = os.path.join(local_folder_root, rel_path)
                                  
-                                 # Crear subdirectorios si hacen falta
+                                 # Create subdirectories if necessary
                                  ldir = os.path.dirname(local_tgt)
                                  if not os.path.exists(ldir):
                                      os.makedirs(ldir, exist_ok=True)
@@ -609,7 +609,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                                  items_to_process.append((k, local_tgt, sz))
                                  total_bytes += sz
 
-             # 2. Configurar Progreso
+             # 2. Configure Progress
              class BulkDownloadProgress(object):
                 def __init__(self, total_size, update_ui_callback):
                     self._total = total_size
@@ -633,9 +633,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
              tracker = BulkDownloadProgress(total_bytes, lambda p, s: self.after(0, update_ui_bulk, p, s))
              
-             # 3. Ejecutar Descargas
+             # 3. Execute Downloads
              for i, (k, local, sz) in enumerate(items_to_process):
-                 # self.after(0, lambda m=f"Descargando {os.path.basename(k)}...": self.prog_label.configure(text=m)) # Opcional: mostrar archivo actual
+                 # Optional: show current file
                  try:
                      self.s3_manager.client.download_file(self.current_bucket, k, local, Callback=tracker)
                  except Exception as err:
@@ -644,7 +644,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
              self.after(0, lambda: messagebox.showinfo("Descarga Masiva", f"Se descargaron {len(items_to_process)} archivos exitosamente."))
              self.after(0, lambda: self.prog_label.configure(text="Descarga masiva completada"))
              self.after(0, lambda: self.prog_bar.set(0))
-             # Limpiar selección
+             # Clear selection
              self.selection_clear_ui()
 
         except Exception as e:
@@ -653,7 +653,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def selection_clear_ui(self):
         self.selected_items.clear()
-        # Refrescar vista para quitar checks (o simplemente iterar widgets, pero refresh es mas limpio)
+        # Refresh view to remove checks (or just iterate widgets, but refreshing is cleaner)
         self.after(0, lambda: self.enter_bucket(self.current_bucket))
 
     def toggle_theme(self):
@@ -939,7 +939,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         storage = self.storage_menu.get()
         files_to_upload = []
         
-        # 1. Recolectar archivos y calcular tamaño total
+        # 1. Collect files and calculate total size
         total_size_bytes = 0
         for p in paths:
             if os.path.isfile(p):
@@ -955,7 +955,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                         files_to_upload.append((full, rel.replace("\\", "/"), sz))
                         total_size_bytes += sz
 
-        # 2. Callback para seguimiento
+        # 2. Progress callback
         class ProgressPercentage(object):
             def __init__(self, total_size, update_ui_callback):
                 self._total = total_size
@@ -966,7 +966,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             def __call__(self, bytes_amount):
                 with self._lock:
                     self._seen_so_far += bytes_amount
-                    # Evitar división por cero
+                    # Prevent division by zero
                     if self._total > 0:
                         percentage = self._seen_so_far / self._total
                     else:
@@ -974,7 +974,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     self._update_ui(percentage, self._seen_so_far)
 
         def update_prog_bar(pct, seen):
-            # Actualizar barra y etiqueta
+            # Update bar and label
             self.prog_bar.set(pct)
             mb_seen = round(seen / (1024 * 1024), 2)
             mb_total = round(total_size_bytes / (1024 * 1024), 2)
@@ -982,7 +982,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         progress_tracker = ProgressPercentage(total_size_bytes, lambda p, s: self.after(0, update_prog_bar, p, s))
 
-        # 3. Subir
+        # 3. Upload
         total_files = len(files_to_upload)
         for i, (local, s3_key, fsize) in enumerate(files_to_upload):
             final_key = self.current_prefix + s3_key

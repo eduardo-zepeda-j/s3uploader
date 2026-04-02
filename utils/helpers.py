@@ -3,7 +3,7 @@ import sys
 
 def resource_path(relative_path):
     """
-    Permite encontrar archivos adjuntos tanto en desarrollo local como en local.
+    Enables finding attached files in both local development and compiled environments.
     """
     try:
         base_path = sys._MEIPASS
@@ -13,8 +13,8 @@ def resource_path(relative_path):
 
 def get_download_dir():
     """
-    Obtiene el directorio de descargas del sistema o cae atrás al Escritorio.
-    Devuelve None si no encuentra ninguno válido.
+    Gets the system's download directory or falls back to the Desktop.
+    Returns None if no valid directory is found.
     """
     download_dir = os.path.join(os.path.expanduser('~'), 'Downloads')
     if not os.path.exists(download_dir):
