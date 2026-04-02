@@ -1,26 +1,21 @@
 import customtkinter as ctk
-import boto3
 import os
-import sys # <--- NECESARIO PARA COMPILACIÓN
+import sys
 import json
 import threading
 import csv
+import queue
 import mimetypes
+from datetime import datetime, timedelta
+import keyring
 from PIL import Image, ImageTk
 from tkinter import filedialog, messagebox, simpledialog
 from tkinterdnd2 import TkinterDnD, DND_FILES
 
-ctk.set_appearance_mode("dark")
-
-# --- FUNCIÓN CRÍTICA PARA COMPILACIÓN ---
-# Esta función permite encontrar archivos adjuntos (como el icono)
-# tanto si corres el .py como si corres el .app compilado.
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+from core.auth_manager import AuthManager
+from core.s3_manager import S3Manager
+from ui.login_window import LoginWindow
+from utils.helpers import resource_path, get_download_dir
 
 class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(self):
@@ -29,22 +24,35 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
         self.title("S3 Uploader - By Eduardo Zepeda - V 0.0.2 ")
         self.geometry("1400x900")
+        self.withdraw()
         
         # Cargar Icono (Versión local)
         self.load_app_icon()
 
         # Cross-platform config path
-        self.config_path = os.path.join(os.path.expanduser("~"), ".s3_commander_config.json")
-        self.s3 = None
+        # Reemplazamos configuraciones antiguas por AuthManager
+        self.auth_manager = AuthManager()
+        self.s3_manager = None
+
         self.current_bucket = None
         self.current_prefix = "" 
+        # UI State persistent path
+        self.config_path = os.path.join(os.path.expanduser("~"), ".s3_commander_config.json")
         
+        self.view_mode = "grid"
+        self.thumbnail_cache = []
+        
+        self.load_session()
         self.init_ui()
 
-        self.load_session()
-        
         # Selección múltiple
         self.selected_items = set() # Stores tuple: (full_path, type, name)
+        self.after(100, self.check_login_status)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        import os
+        os._exit(0)
 
     # --- NUEVA VERSIÓN DE CARGA DE ICONO ---
     def load_app_icon(self):
@@ -64,27 +72,28 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def init_ui(self):
         # --- Sidebar ---
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0)
+        self.sidebar = ctk.CTkFrame(self, width=280, corner_radius=0, fg_color=("#F3F4F6", "#0B0C10"))
         self.sidebar.pack(side="left", fill="y")
 
-        ctk.CTkLabel(self.sidebar, text="Configuración AWS\n(Arrastra CSV)", font=("Helvetica", 16, "bold")).pack(pady=20)
+        ctk.CTkLabel(self.sidebar, text="Mis Repositorios", font=("Helvetica Neue", 20, "bold"), text_color=("#111827", "#F9FAFB")).pack(pady=(30, 10))
+        self.sidebar_buckets_frame = ctk.CTkScrollableFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_buckets_frame.pack(fill="both", expand=True, padx=10, pady=5)
         
-        self.entry_ak = ctk.CTkEntry(self.sidebar, placeholder_text="Access Key", show="*")
-        self.entry_ak.pack(pady=5, padx=10, fill="x")
-        self.entry_sk = ctk.CTkEntry(self.sidebar, placeholder_text="Secret Key", show="*")
-        self.entry_sk.pack(pady=5, padx=10, fill="x")
-        self.entry_rg = ctk.CTkEntry(self.sidebar, placeholder_text="Región (us-east-1)")
-        self.entry_rg.pack(pady=5, padx=10, fill="x")
+        self.btn_refresh_buckets = ctk.CTkButton(self.sidebar, text="↻ Refrescar", font=("Helvetica Neue", 13, "bold"), fg_color=("#E5E7EB", "#1F2937"), hover_color=("#D1D5DB", "#374151"), text_color=("#374151", "#E5E7EB"), command=self.populate_sidebar_buckets)
+        self.btn_refresh_buckets.pack(pady=10, padx=20, fill="x")
 
-        self.btn_connect = ctk.CTkButton(self.sidebar, text="Conectar / Refrescar", command=self.connect_aws)
-        self.btn_connect.pack(pady=15, padx=10)
+        self.theme_switch = ctk.CTkSwitch(self.sidebar, text="Modo Claro", font=("Helvetica Neue", 13), command=self.toggle_theme)
+        self.theme_switch.pack(side="bottom", pady=25)
 
-        ctk.CTkLabel(self.sidebar, text="Clase de Almacenamiento", font=("Helvetica", 14)).pack(pady=(20,5))
-        self.storage_menu = ctk.CTkOptionMenu(self.sidebar, values=["STANDARD", "GLACIER_IR", "DEEP_ARCHIVE", "ONEZONE_IA"])
-        self.storage_menu.pack(pady=5, padx=10)
+        self.btn_logout = ctk.CTkButton(self.sidebar, text="🚪 Cerrar Sesión", font=("Helvetica Neue", 14, "bold"), fg_color=("#FEE2E2", "#7F1D1D"), hover_color=("#FECACA", "#991B1B"), text_color=("#991B1B", "#FECACA"), command=self.logout)
+        self.btn_logout.pack(side="bottom", pady=10, padx=20, fill="x")
+
+        self.storage_menu = ctk.CTkOptionMenu(self.sidebar, values=["STANDARD", "GLACIER_IR", "DEEP_ARCHIVE", "ONEZONE_IA"], font=("Helvetica Neue", 12), fg_color=("#E5E7EB", "#1F2937"), button_color=("#D1D5DB", "#374151"), text_color=("#111827", "#F9FAFB"))
+        self.storage_menu.pack(side="bottom", pady=5, padx=20, fill="x")
+        ctk.CTkLabel(self.sidebar, text="Clase de Almacenamiento", font=("Helvetica Neue", 12, "bold"), text_color=("#6B7280", "#9CA3AF")).pack(side="bottom", pady=(15,0))
 
         # --- Main View ---
-        self.main_view = ctk.CTkFrame(self)
+        self.main_view = ctk.CTkFrame(self, fg_color=("#FFFFFF", "#111827"), corner_radius=0)
         self.main_view.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
         # Navegación Superior
@@ -92,7 +101,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.nav_frame = ctk.CTkFrame(self.main_view, fg_color="transparent")
         self.nav_frame.pack(fill="x", pady=5)
         
-        self.btn_back = ctk.CTkButton(self.nav_frame, text="⬅", width=40, command=self.go_back, fg_color="#333", hover_color="#444")
+        self.btn_back = ctk.CTkButton(self.nav_frame, text="⬅", width=40, command=self.go_back, fg_color=("#CCCCCC", "#333333"), hover_color=("#AAAAAA", "#444444"), text_color=("#000000", "#FFFFFF"))
         self.btn_back.pack(side="left", padx=(0, 10))
         
         # Frame scrollable horizontal para los breadcrumbs por si la ruta es muy larga
@@ -116,23 +125,26 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         self.actions_frame = ctk.CTkFrame(self.main_view, fg_color="transparent")
         self.actions_frame.pack(fill="x", pady=5)
 
-        self.btn_download_sel = ctk.CTkButton(self.actions_frame, text="⬇ Descargar Slc.", command=self.download_selected_items, fg_color="#107C10", hover_color="#0b570b", width=120)
-        self.btn_download_sel.pack(side="left", padx=5)
+        self.btn_download_sel = ctk.CTkButton(self.actions_frame, text="⬇ Descargar Slc.", font=("Helvetica Neue", 13, "bold"), command=self.download_selected_items, fg_color=("#D1FAE5", "#064E3B"), hover_color=("#A7F3D0", "#065F46"), text_color=("#065F46", "#34D399"), width=130)
+        self.btn_download_sel.pack(side="left", padx=8)
 
-        self.btn_up_files = ctk.CTkButton(self.actions_frame, text="+ Subir Archivos", command=lambda: self.upload_task("files"), fg_color="#2b2b2b", hover_color="#3a3a3a", border_width=1, border_color="#555")
-        self.btn_up_files.pack(side="left", padx=5)
+        self.btn_up_files = ctk.CTkButton(self.actions_frame, text="+ Subir Archivos", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("files"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), text_color=("#111827", "#F9FAFB"))
+        self.btn_up_files.pack(side="left", padx=8)
 
-        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text="+ Subir Carpeta", command=lambda: self.upload_task("folder"), fg_color="#2b2b2b", hover_color="#3a3a3a", border_width=1, border_color="#555")
-        self.btn_up_folder.pack(side="left", padx=5)
+        self.btn_up_folder = ctk.CTkButton(self.actions_frame, text="+ Subir Carpeta", font=("Helvetica Neue", 13, "bold"), command=lambda: self.upload_task("folder"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), text_color=("#111827", "#F9FAFB"))
+        self.btn_up_folder.pack(side="left", padx=8)
 
-        self.btn_new_folder = ctk.CTkButton(self.actions_frame, text="+ Nueva Carpeta", fg_color="#E86E12", hover_color="#C45605", command=self.create_folder_task)
-        self.btn_new_folder.pack(side="left", padx=5)
+        self.btn_new_folder = ctk.CTkButton(self.actions_frame, text="+ Nueva Carpeta", font=("Helvetica Neue", 13, "bold"), fg_color=("#FEF3C7", "#78350F"), hover_color=("#FDE68A", "#92400E"), text_color=("#92400E", "#FDE68A"), command=self.create_folder_task)
+        self.btn_new_folder.pack(side="left", padx=8)
+
+        self.btn_view_mode = ctk.CTkButton(self.actions_frame, text="Visión: Cuadrícula", font=("Helvetica Neue", 13, "bold"), fg_color=("#F3F4F6", "#1F2937"), hover_color=("#E5E7EB", "#374151"), command=self.toggle_view_mode, text_color=("#111827", "#F9FAFB"))
+        self.btn_view_mode.pack(side="right", padx=15)
 
         # Progreso
-        self.prog_label = ctk.CTkLabel(self.main_view, text="Listo", font=("Helvetica", 12))
-        self.prog_label.pack(pady=2)
-        self.prog_bar = ctk.CTkProgressBar(self.main_view, progress_color="#E86E12")
-        self.prog_bar.pack(fill="x", padx=20)
+        self.prog_label = ctk.CTkLabel(self.main_view, text="Listo", font=("Helvetica Neue", 12))
+        self.prog_label.pack(pady=4)
+        self.prog_bar = ctk.CTkProgressBar(self.main_view, progress_color="#F59E0B", fg_color=("#E5E7EB", "#374151"), height=8)
+        self.prog_bar.pack(fill="x", padx=30, pady=(0, 10))
         self.prog_bar.set(0)
 
         # Habilitar Drop de archivos
@@ -141,19 +153,9 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def on_drop(self, event):
         data = event.data
-        pointer_x = self.winfo_pointerx()
-        sidebar_right = self.sidebar.winfo_rootx() + self.sidebar.winfo_width()
-
         paths = self.parse_dropped_files(data)
         if not paths: return
-
-        if pointer_x < sidebar_right:
-            if len(paths) >= 1 and paths[0].lower().endswith('.csv'):
-                self.load_credentials_from_path(paths[0])
-            else:
-                messagebox.showinfo("Zona de Configuración", "Arrastra aquí únicamente tu archivo CSV de credenciales.")
-        else:
-            self.handle_upload_drop(paths)
+        self.handle_upload_drop(paths)
 
     def parse_dropped_files(self, data):
         import re
@@ -163,35 +165,8 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         else:
             return [data] 
 
-    def load_credentials_from_path(self, file_path):
-        try:
-            with open(file_path, 'r', newline='', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                headers = next(reader, None)
-                if not headers: return
-
-                ak_idx = -1
-                sk_idx = -1
-                for i, h in enumerate(headers):
-                    val = h.lower()
-                    if "access" in val and "key" in val and "id" in val:
-                        ak_idx = i
-                    elif "secret" in val and "key" in val:
-                        sk_idx = i
-
-                if ak_idx != -1 and sk_idx != -1:
-                    row = next(reader, None)
-                    if row:
-                        self.entry_ak.delete(0, "end")
-                        self.entry_ak.insert(0, row[ak_idx].strip())
-                        self.entry_sk.delete(0, "end")
-                        self.entry_sk.insert(0, row[sk_idx].strip())
-                        messagebox.showinfo("Credenciales", "Credenciales cargadas.")
-        except Exception as e:
-            messagebox.showerror("Error CSV", str(e))
-
     def handle_upload_drop(self, paths):
-        if not self.s3 or not self.current_bucket:
+        if not self.s3_manager or not self.current_bucket:
             messagebox.showwarning("Atención", "Conecta y selecciona un Bucket primero.")
             return
 
@@ -199,42 +174,72 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             threading.Thread(target=self.hilo_upload, args=(paths, "mixed"), daemon=True).start()
 
     def save_session(self):
-        config = {
-            "ak": self.entry_ak.get(),
-            "sk": self.entry_sk.get(),
-            "rg": self.entry_rg.get(),
-            "last_bucket": self.current_bucket,
-            "last_prefix": self.current_prefix
-        }
+        config = {}
+        if os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, "r") as f:
+                    config = json.load(f)
+            except: pass
+        config["last_bucket"] = self.current_bucket
+        config["last_prefix"] = self.current_prefix
         with open(self.config_path, "w") as f:
             json.dump(config, f)
 
     def load_session(self):
         if os.path.exists(self.config_path):
-            with open(self.config_path, "r") as f:
-                c = json.load(f)
-                self.entry_ak.insert(0, c.get("ak", ""))
-                self.entry_sk.insert(0, c.get("sk", ""))
-                self.entry_rg.insert(0, c.get("rg", "us-east-1"))
-                self.current_bucket = c.get("last_bucket")
-                self.current_prefix = c.get("last_prefix", "")
+            try:
+                with open(self.config_path, "r") as f:
+                    c = json.load(f)
+                    self.current_bucket = c.get("last_bucket")
+                    self.current_prefix = c.get("last_prefix", "")
+            except: pass
 
-    def connect_aws(self):
-        ak = self.entry_ak.get().strip()
-        sk = self.entry_sk.get().strip()
-        rg = self.entry_rg.get().strip()
 
-        if not ak or not sk: return
-        if not rg: rg = "us-east-1"
 
+    def check_login_status(self):
+        result = self.auth_manager.load_session()
+        if result:
+            ak, sk, rg = result
+            self.on_login_success(ak, sk, rg)
+        else:
+            LoginWindow(self, self.on_login_success)
+
+    def on_login_success(self, ak, sk, rg):
+        self.deiconify()
+        self.auth_manager.save_session(ak, sk, rg)
+        
         try:
-            self.s3 = boto3.client('s3', aws_access_key_id=ak, aws_secret_access_key=sk, region_name=rg)
+            self.s3_manager = S3Manager(ak, sk, rg)
+            self.populate_sidebar_buckets()
             if self.current_bucket:
                 self.enter_bucket(self.current_bucket)
             else:
                 self.list_buckets()
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            print("ERROR FATAL en on_login_success: ", str(e))
+            import traceback
+            traceback.print_exc()
+            messagebox.showerror("Error de Conexión", f"Error: {e}")
+            LoginWindow(self, self.on_login_success)
+
+    def populate_sidebar_buckets(self):
+        for widget in self.sidebar_buckets_frame.winfo_children():
+            widget.destroy()
+        if not self.s3_manager: return
+        try:
+            response = self.s3_manager.client.list_buckets()
+            for b in response['Buckets']:
+                bname = b['Name']
+                cmd = lambda name=bname: self.enter_bucket_from_sidebar(name)
+                btn = ctk.CTkButton(self.sidebar_buckets_frame, text="🪣 " + bname, fg_color="transparent", 
+                                    text_color="#AAAAAA", hover_color="#333", anchor="w", command=cmd)
+                btn.pack(fill="x", pady=2)
+        except Exception as e:
+            print("Error listando buckets:", e)
+
+    def enter_bucket_from_sidebar(self, bucket_name):
+        self.current_prefix = ""
+        self.enter_bucket(bucket_name)
 
     def update_breadcrumbs(self):
         # Limpiar breadcrumbs anteriores
@@ -294,29 +299,45 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
     def clear_list_frame(self):
         self.grid_idx = 0  # Reset counter
         self.selected_items.clear() # Limpiar selección al cambiar de vista/bucket
+        self.thumbnail_cache.clear()
         for widget in self.file_list_frame.winfo_children():
             widget.destroy()
 
-    def toggle_selection(self, type, name, full_path):
-        item = (full_path, type, name)
-        if item in self.selected_items:
-            self.selected_items.remove(item)
+    def toggle_view_mode(self):
+        if self.view_mode == "grid":
+            self.view_mode = "list"
+            self.btn_view_mode.configure(text="Visión: Lista")
         else:
-            self.selected_items.add(item)
+            self.view_mode = "grid"
+            self.btn_view_mode.configure(text="Visión: Cuadrícula")
+        if self.current_bucket:
+            self.enter_bucket(self.current_bucket)
+
+    def logout(self):
+        self.auth_manager.clear_session()
+        self.current_bucket = None
+        self.s3_manager = None
+        for widget in getattr(self, 'sidebar_buckets_frame', ctk.CTkFrame(self)).winfo_children(): widget.destroy()
+        for widget in getattr(self, 'file_list_frame', ctk.CTkFrame(self)).winfo_children(): widget.destroy()
+        self.withdraw()
+        LoginWindow(self, self.on_login_success)
 
     def list_buckets(self):
         self.current_bucket = None
         self.update_breadcrumbs()
         self.clear_list_frame()
+        self.populate_sidebar_buckets()
         
         try:
-            response = self.s3.list_buckets()
+            response = self.s3_manager.client.list_buckets()
             for b in response['Buckets']:
                 self.create_list_item("bucket", b['Name'])
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
     def enter_bucket(self, bucket_name):
+        if self.current_bucket != bucket_name:
+            self.current_prefix = ""
         self.current_bucket = bucket_name
         self.update_breadcrumbs()
         self.clear_list_frame()
@@ -325,7 +346,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         lbl.grid(row=0, column=0, columnspan=4, pady=50)
         
         try:
-            resp = self.s3.list_objects_v2(Bucket=bucket_name, Prefix=self.current_prefix, Delimiter='/')
+            resp = self.s3_manager.client.list_objects_v2(Bucket=bucket_name, Prefix=self.current_prefix, Delimiter='/')
             lbl.destroy()
             
             if 'CommonPrefixes' in resp:
@@ -338,9 +359,10 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     if obj['Key'] != self.current_prefix:
                         file_name = obj['Key'].split('/')[-1]
                         size_kb = round(obj['Size'] / 1024, 2)
-                        # Detectar extensión para icono
                         _, ext = os.path.splitext(file_name)
-                        self.create_list_item("file", file_name, full_path=obj['Key'], size=f"{size_kb} KB", ext=ext)
+                        last_mod = obj.get('LastModified')
+                        date_str = last_mod.strftime("%Y-%m-%d %H:%M") if last_mod else ""
+                        self.create_list_item("file", file_name, full_path=obj['Key'], size=f"{size_kb} KB", ext=ext, date=date_str)
             
             self.save_session()
         except Exception as e:
@@ -348,7 +370,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def copy_link(self, full_path):
         try:
-            url = self.s3.generate_presigned_url(
+            url = self.s3_manager.client.generate_presigned_url(
                 ClientMethod='get_object',
                 Params={'Bucket': self.current_bucket, 'Key': full_path}
             )
@@ -432,7 +454,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                 self.after(0, lambda: self.prog_label.configure(text=f"Iniciando descarga de {file_name}..."))
                 try:
                     # 1. Obtener tamaño total para calcular porcentaje
-                    head = self.s3.head_object(Bucket=self.current_bucket, Key=full_path)
+                    head = self.s3_manager.client.head_object(Bucket=self.current_bucket, Key=full_path)
                     total_bytes = head.get('ContentLength', 0)
 
                     # 2. Clase Callback
@@ -460,7 +482,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                     progress_tracker = DownloadProgress(total_bytes, lambda p, s: self.after(0, update_ui_download, p, s))
 
                     # 3. Descargar con Callback
-                    self.s3.download_file(self.current_bucket, full_path, local_path, Callback=progress_tracker)
+                    self.s3_manager.client.download_file(self.current_bucket, full_path, local_path, Callback=progress_tracker)
                     
                     self.after(0, lambda: messagebox.showinfo("Descarga Exitosa", f"Archivo guardado en:\n{local_path}"))
                     self.after(0, lambda: self.prog_label.configure(text="Descarga compleada"))
@@ -504,7 +526,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                  if type == "file":
                      # Obtener tamaño
                      try:
-                        head = self.s3.head_object(Bucket=self.current_bucket, Key=full_path)
+                        head = self.s3_manager.client.head_object(Bucket=self.current_bucket, Key=full_path)
                         sz = head.get('ContentLength', 0)
                         local_tgt = os.path.join(dest_dir, name)
                         # Manejo de duplicados en root
@@ -520,7 +542,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
                  
                  elif type == "folder":
                      # Listar recursivo
-                     paginator = self.s3.get_paginator('list_objects_v2')
+                     paginator = self.s3_manager.client.get_paginator('list_objects_v2')
                      # La carpeta destino local será dest_dir/nombre_carpeta
                      local_folder_root = os.path.join(dest_dir, name)
                      if not os.path.exists(local_folder_root):
@@ -574,7 +596,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
              for i, (k, local, sz) in enumerate(items_to_process):
                  # self.after(0, lambda m=f"Descargando {os.path.basename(k)}...": self.prog_label.configure(text=m)) # Opcional: mostrar archivo actual
                  try:
-                     self.s3.download_file(self.current_bucket, k, local, Callback=tracker)
+                     self.s3_manager.client.download_file(self.current_bucket, k, local, Callback=tracker)
                  except Exception as err:
                      print(f"Error {k}: {err}")
             
@@ -593,170 +615,213 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         # Refrescar vista para quitar checks (o simplemente iterar widgets, pero refresh es mas limpio)
         self.after(0, lambda: self.enter_bucket(self.current_bucket))
 
-    def create_list_item(self, type, name, full_path=None, size="", ext=""):
-        # Calcular posición en Grid
+    def toggle_theme(self):
+        if self.theme_switch.get() == 1:
+            ctk.set_appearance_mode("light")
+        else:
+            ctk.set_appearance_mode("dark")
+
+    def create_list_item(self, type, name, full_path=None, size="", ext="", date=""):
         row = self.grid_idx // self.columns_per_row
         col = self.grid_idx % self.columns_per_row
         self.grid_idx += 1
 
-        # Color de fondo de la tarjeta diferenciado para Buckets
-        card_color = ("#2B2B2B", "#333333")
-        border_color = "#444"
-        if type == "bucket":
-            card_color = ("#353535", "#2a2a2a") # Ligeramente más claro/distinto
-            border_color = "#E86E12" # Borde naranja sutil para que sea llamativo
+        card_color = ("#FFF7ED", "#451A03") if type == "bucket" else (("#EFF6FF", "#172554") if type == "folder" else ("#FFFFFF", "#1F2937"))
+        border_color = ("#FDE68A", "#78350F") if type == "bucket" else (("#BFDBFE", "#1E3A8A") if type == "folder" else ("#E5E7EB", "#374151"))
             
-        # Tarjeta principal
-        card = ctk.CTkFrame(self.file_list_frame, corner_radius=15, fg_color=card_color, border_width=1 if type == "bucket" else 1, border_color=border_color)
-        card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
+        card = ctk.CTkFrame(self.file_list_frame, corner_radius=12, fg_color=card_color, border_width=1, border_color=border_color)
+        
+        if self.view_mode == "list":
+            card.grid(row=self.grid_idx, column=0, columnspan=self.columns_per_row, padx=8, pady=2, sticky="ew")
+        else:
+            card.grid(row=row, column=col, padx=8, pady=8, sticky="nsew")
 
-        # Checkbox de selección (Top-Left)
+        content_frame = ctk.CTkFrame(card, fg_color="transparent")
+        
         if type in ["file", "folder"]:
-            # Usar una variable para trackeo visual si se desea, o simplemente comando directo
-            chk = ctk.CTkCheckBox(card, text="", width=20, height=20, corner_radius=5, checkbox_width=18, checkbox_height=18,
+            chk = ctk.CTkCheckBox(content_frame if self.view_mode == "list" else card, text="", width=20, height=20, corner_radius=5, checkbox_width=18, checkbox_height=18,
                                   command=lambda t=type, n=name, p=full_path: self.toggle_selection(t, n, p))
-            chk.place(x=8, y=8)
-            # Marcar si ya estaba seleccionado (persistencia simple durante navegación)
+            if self.view_mode == "list":
+                chk.pack(side="left", padx=(0, 10))
+            else:
+                chk.place(x=8, y=8)
             if (full_path, type, name) in self.selected_items:
                 chk.select()
         
-        # Usar un Frame interno para centrar el contenido perfectamente
-        content_frame = ctk.CTkFrame(card, fg_color="transparent")
-        content_frame.pack(expand=True, fill="both", padx=5, pady=5)
-        
-        # Ensure Checkbox is on top
-        if type in ["file", "folder"] and 'chk' in locals():
-            chk.lift()
+        if self.view_mode == "list":
+            content_frame.pack(expand=True, fill="x", padx=10, pady=5)
+        else:
+            content_frame.pack(expand=True, fill="both", padx=5, pady=5)
+            if type in ["file", "folder"] and 'chk' in locals():
+                chk.lift()
 
         icon = "📄"
-        icon_color = "#CCCCCC"
+        icon_color = ("#666666", "#CCCCCC")
         command = None
         hover_cursor = "arrow"
 
-        # --- Selección de Iconos ---
         if type == "bucket":
             icon = "🪣"
-            icon_color = "#E86E12" 
+            icon_color = ("#cc5500", "#E86E12") 
             command = lambda: self.enter_bucket(name)
             hover_cursor = "hand2"
             
         elif type == "folder":
             icon = "📂"
-            icon_color = "#4DA6FF"
+            icon_color = ("#0066cc", "#4DA6FF")
             command = lambda: self.enter_subfolder(full_path)
             hover_cursor = "hand2"
             
         elif type == "file":
              ext_norm = ext.lower().strip('.') if ext else ""
-             
-             # Audio
-             if ext_norm in ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a']:
-                 icon = "🎵"
-                 icon_color = "#1DB954"
-             # Video
-             elif ext_norm in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv']:
-                 icon = "🎬"
-                 icon_color = "#FF4500"
-             # Imagen
-             elif ext_norm in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp']:
-                 icon = "🖼️"
-                 icon_color = "#FFD700"
-             # Documentos
-             elif ext_norm in ['pdf']:
-                 icon = "📕"
-                 icon_color = "#F40F02"
-             elif ext_norm in ['doc', 'docx']:
-                 icon = "📝"
-                 icon_color = "#2B579A"
-             elif ext_norm in ['xls', 'xlsx', 'csv']:
-                 icon = "📊"
-                 icon_color = "#217346"
-             elif ext_norm in ['ppt', 'pptx']:
-                 icon = "📉"
-                 icon_color = "#D24726"
-             elif ext_norm in ['txt', 'md', 'py', 'json', 'xml']:
-                 icon = "📄"
-                 icon_color = "#CCCCCC"
-             elif ext_norm in ['zip', 'rar', '7z', 'tar', 'gz']:
-                 icon = "📦"
-                 icon_color = "#A52A2A"
-             else:
-                 icon = "📄"
-                 icon_color = "#999999"
+             if ext_norm in ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a']: icon, icon_color = "🎵", ("#107c10", "#1DB954")
+             elif ext_norm in ['mp4', 'mov', 'avi', 'mkv', 'webm', 'flv']: icon, icon_color = "🎬", ("#cc3300", "#FF4500")
+             elif ext_norm in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp']: icon, icon_color = "🖼️", ("#b38b00", "#FFD700")
+             elif ext_norm in ['pdf']: icon, icon_color = "📕", ("#cc0000", "#F40F02")
+             elif ext_norm in ['doc', 'docx']: icon, icon_color = "📝", ("#1e3b70", "#2B579A")
+             elif ext_norm in ['xls', 'xlsx', 'csv']: icon, icon_color = "📊", ("#154c2a", "#217346")
+             elif ext_norm in ['ppt', 'pptx']: icon, icon_color = "📉", ("#b33c20", "#D24726")
+             elif ext_norm in ['txt', 'md', 'py', 'json', 'xml']: icon, icon_color = "📄", ("#444444", "#CCCCCC")
+             elif ext_norm in ['zip', 'rar', '7z', 'tar', 'gz']: icon, icon_color = "📦", ("#800000", "#A52A2A")
+             else: icon, icon_color = "📄", ("#666666", "#999999")
         
-        # --- Icono Grande ---
-        font_size = 48
-        if type == "bucket": font_size = 56 # Icono más grande para buscar impacto visual
+        font_size = 24 if self.view_mode == "list" else (56 if type == "bucket" else 48)
 
-        font_check = ("Segoe UI Emoji", font_size) if os.name == 'nt' else ("Apple Color Emoji", font_size)
         try:
              btn_icon = ctk.CTkButton(content_frame, text=icon, font=("Arial", font_size), fg_color="transparent", hover=False, 
-                                      command=command, text_color=icon_color, height=font_size+10)
+                                      command=command, text_color=icon_color, height=font_size+5, width=font_size+5)
         except:
              btn_icon = ctk.CTkButton(content_frame, text=icon, font=("Helvetica", font_size), fg_color="transparent", hover=False,
-                                      command=command, text_color=icon_color, height=font_size+10)
+                                      command=command, text_color=icon_color, height=font_size+5, width=font_size+5)
         
         if hover_cursor == "hand2":
             btn_icon.configure(hover=True, hover_color="#444444")
         
-        # Pack para centrar verticalmente, empujando todo al medio
-        btn_icon.pack(side="top", pady=(10, 2), expand=True)
-
-        # --- Nombre del Archivo/Carpeta ---
-        # Wraplength ajustado
-        lbl_name = ctk.CTkLabel(content_frame, text=name, font=("Helvetica", 13, "bold"), wraplength=130, justify="center")
-        lbl_name.pack(side="top", pady=(0, 10))
-
-        # --- Footer: Detalles y Acciones (Solo si no es bucket) ---
-        if type != "bucket":
-            footer = ctk.CTkFrame(card, fg_color="transparent", height=30)
-            footer.pack(side="bottom", fill="x", padx=5, pady=(0, 5))
+        if self.view_mode == "list":
+            btn_icon.pack(side="left", padx=(0, 15))
+            lbl_name = ctk.CTkLabel(content_frame, text=name, font=("Helvetica Neue", 14, "bold"), text_color=("#111827", "#F9FAFB"), anchor="w", justify="left")
+            lbl_name.pack(side="left", fill="x", expand=True)
             
-            # Si es archivo, mostrar tamaño
-            if type == "file":
-                 lbl_size = ctk.CTkLabel(footer, text=size, font=("Consolas", 10), text_color="gray")
-                 lbl_size.pack(side="top", pady=(0, 2))
+            if type != "bucket":
+                lbl_date = ctk.CTkLabel(content_frame, text=date, font=("Andale Mono", 12), text_color=("#6B7280", "#9CA3AF"), width=140, anchor="e")
+                lbl_date.pack(side="left", padx=15)
+                if type == "file":
+                    lbl_size = ctk.CTkLabel(content_frame, text=size, font=("Andale Mono", 12, "bold"), text_color=("#4B5563", "#D1D5DB"), width=90, anchor="e")
+                    lbl_size.pack(side="left", padx=15)
+                actions_inner = ctk.CTkFrame(content_frame, fg_color="transparent")
+                actions_inner.pack(side="right", padx=10)
+        else:
+            btn_icon.pack(side="top", pady=(15, 5), expand=True)
+            lbl_name = ctk.CTkLabel(content_frame, text=name, font=("Helvetica Neue", 13, "bold"), text_color=("#111827", "#F9FAFB"), wraplength=140, justify="center")
+            lbl_name.pack(side="top", pady=(0, 10))
+            
+            if type != "bucket":
+                footer = ctk.CTkFrame(card, fg_color="transparent", height=35)
+                footer.pack(side="bottom", fill="x", padx=10, pady=(0, 10))
+                if type == "file":
+                     lbl_size = ctk.CTkLabel(footer, text=size, font=("Andale Mono", 11, "bold"), text_color=("#4B5563", "#D1D5DB"))
+                     lbl_size.pack(side="top", pady=(0, 4))
+                actions_inner = ctk.CTkFrame(footer, fg_color="transparent")
+                actions_inner.pack(side="bottom", pady=4)
+                
 
-            # Botones de acción 
+
+        if type != "bucket":
             if self.current_bucket:
-                 actions_inner = ctk.CTkFrame(footer, fg_color="transparent")
-                 actions_inner.pack(side="bottom", pady=2)
-
-                 btn_del = ctk.CTkButton(actions_inner, text="🗑", width=28, height=28, fg_color="#990000", hover_color="#B30000",
-                                         command=lambda: self.request_delete(name, type, full_path), corner_radius=6)
-                 btn_del.pack(side="left", padx=3)
-                 
-                 if type == "file":
-                    btn_link = ctk.CTkButton(actions_inner, text="🔗", width=28, height=28, fg_color="#1f538d", hover_color="#14375e",
-                                             command=lambda: self.copy_link(full_path), corner_radius=6)
-                    btn_link.pack(side="left", padx=3)
-                    
-                    # Usamos una flecha genérica "⬇" o "▼" que suele tener mejor soporte que el Inbox tray
+                btn_del = ctk.CTkButton(actions_inner, text="🗑", width=28, height=28, fg_color="#990000", hover_color="#B30000",
+                                        command=lambda: self.request_delete(name, type, full_path), corner_radius=6)
+                btn_del.pack(side="right", padx=3)
+                
+                btn_ren = ctk.CTkButton(actions_inner, text="✏️", width=28, height=28, fg_color="#E86E12", hover_color="#C45605",
+                                        command=lambda: self.request_rename(name, type, full_path), corner_radius=6)
+                btn_ren.pack(side="right", padx=3)
+                
+                if type == "file":
                     btn_down = ctk.CTkButton(actions_inner, text="⬇", width=28, height=28, fg_color="#107C10", hover_color="#0b570b",
                                              command=lambda: self.download_file(full_path, name), corner_radius=6)
-                    btn_down.pack(side="left", padx=3)
+                    btn_down.pack(side="right", padx=3)
+                    
+                    btn_link = ctk.CTkButton(actions_inner, text="🔗", width=28, height=28, fg_color="#1f538d", hover_color="#14375e",
+                                             command=lambda: self.copy_link(full_path), corner_radius=6)
+                    btn_link.pack(side="right", padx=3)
+
+
+
+    def request_rename(self, name, type, full_path):
+        import threading
+        target_bucket = self.current_bucket
+        target_prefix = self.current_prefix
+        if type == "file":
+            import os
+            base_name, ext = os.path.splitext(name)
+            new_base = ctk.CTkInputDialog(text=f"Nuevo nombre para '{base_name}'\n(La extensión {ext} se mantendrá):", title="Renombrar").get_input()
+            if new_base and new_base != base_name:
+                new_name = new_base + ext
+                threading.Thread(target=self.perform_rename, args=(name, new_name, type, full_path, target_bucket, target_prefix), daemon=True).start()
+        else:
+            new_name = ctk.CTkInputDialog(text=f"Nuevo nombre de carpeta para '{name}':", title="Renombrar").get_input()
+            if new_name and new_name != name:
+                threading.Thread(target=self.perform_rename, args=(name, new_name, type, full_path, target_bucket, target_prefix), daemon=True).start()
+
+    def perform_rename(self, old_name, new_name, type, full_path, target_bucket, target_prefix):
+        self.after(0, lambda: self.prog_label.configure(text=f"Renombrando '{old_name}' a '{new_name}'..."))
+        self.after(0, lambda: self.prog_bar.configure(mode="indeterminate"))
+        self.after(0, lambda: self.prog_bar.start())
+        try:
+            if type == "folder":
+                parent = "/".join(full_path.strip('/').split('/')[:-1])
+                parent = parent + "/" if parent else ""
+                new_key_base = parent + new_name + "/"
+                
+                paginator = self.s3_manager.client.get_paginator('list_objects_v2')
+                for page in paginator.paginate(Bucket=target_bucket, Prefix=full_path):
+                    if 'Contents' in page:
+                        for obj in page['Contents']:
+                            old_obj_key = obj['Key']
+                            new_obj_key = old_obj_key.replace(full_path, new_key_base, 1)
+                            self.s3_manager.client.copy_object(Bucket=target_bucket, CopySource={'Bucket': target_bucket, 'Key': old_obj_key}, Key=new_obj_key)
+                            self.s3_manager.client.delete_object(Bucket=target_bucket, Key=old_obj_key)
+            else:
+                parent = "/".join(full_path.split('/')[:-1])
+                parent = parent + "/" if parent else ""
+                new_key = parent + new_name
+                self.s3_manager.client.copy_object(Bucket=target_bucket, CopySource={'Bucket': target_bucket, 'Key': full_path}, Key=new_key)
+                self.s3_manager.client.delete_object(Bucket=target_bucket, Key=full_path)
+        except Exception as e:
+            self.after(0, lambda: messagebox.showerror("Error Renombrando", str(e)))
+        finally:
+            self.after(0, lambda: self.prog_bar.stop())
+            self.after(0, lambda: self.prog_bar.configure(mode="determinate"))
+            self.after(0, lambda: self.prog_label.configure(text="Listo"))
+            self.after(0, lambda: self.prog_bar.set(0))
+            if self.current_bucket == target_bucket and self.current_prefix == target_prefix:
+                self.after(0, lambda: self.enter_bucket(self.current_bucket))
 
     def request_delete(self, name, type, full_path):
         pwd = ctk.CTkInputDialog(text=f"Pass para borrar '{name}':", title="Seguridad").get_input()
         if pwd == "5834":
             if messagebox.askyesno("Confirmar Eliminación", f"¿Estás SEGURO de eliminar definitivamente:\n\n{name}\n\nEsta acción no se puede deshacer?"):
-                ak = self.entry_ak.get().strip()
-                sk = self.entry_sk.get().strip()
-                rg = self.entry_rg.get().strip()
+                ak = self.ak_memory
+                sk = self.sk_memory
+                rg = self.rg_memory
                 if not rg: rg = "us-east-1"
                 creds = (ak, sk, rg)
-                threading.Thread(target=self.perform_delete, args=(full_path, type, creds), daemon=True).start()
+                target_bucket = self.current_bucket
+                target_prefix = self.current_prefix
+                import threading
+                threading.Thread(target=self.perform_delete, args=(full_path, type, creds, target_bucket, target_prefix), daemon=True).start()
 
-    def perform_delete(self, key, type, creds):
+    def perform_delete(self, key, type, creds, target_bucket, target_prefix):
         try:
             if type == "folder":
                 ak, sk, rg = creds
                 s3_resource = boto3.resource('s3', aws_access_key_id=ak, aws_secret_access_key=sk, region_name=rg)
-                s3_resource.Bucket(self.current_bucket).objects.filter(Prefix=key).delete()
+                s3_resource.Bucket(target_bucket).objects.filter(Prefix=key).delete()
             else:
-                self.s3.delete_object(Bucket=self.current_bucket, Key=key)
+                self.s3_manager.client.delete_object(Bucket=target_bucket, Key=key)
             
-            self.after(0, lambda: self.enter_bucket(self.current_bucket))
+            if self.current_bucket == target_bucket and self.current_prefix == target_prefix:
+                self.after(0, lambda: self.enter_bucket(self.current_bucket))
         except Exception as e:
             self.after(0, lambda: messagebox.showerror("Error", str(e)))
 
@@ -778,7 +843,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         if name:
             full_key = self.current_prefix + name.strip().replace("/", "") + "/"
             try:
-                self.s3.put_object(Bucket=self.current_bucket, Key=full_key)
+                self.s3_manager.client.put_object(Bucket=self.current_bucket, Key=full_key)
                 self.enter_bucket(self.current_bucket)
             except Exception as e:
                 messagebox.showerror("Error", str(e))
@@ -852,7 +917,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             if content_type is None: content_type = 'application/octet-stream'
 
             try:
-                self.s3.upload_file(local, self.current_bucket, final_key, 
+                self.s3_manager.client.upload_file(local, self.current_bucket, final_key, 
                                    ExtraArgs={'StorageClass': storage, 'ContentType': content_type},
                                    Callback=progress_tracker)
             except Exception as e:
