@@ -378,11 +378,25 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             self.next_lang = new_lang
             self.save_session()
             
-            # Request clean interior loop reboot inside main.py
-            self.should_restart = True
-            
-            # Instantly tear down this interface window and break the Tkinter event loop
-            self.destroy()
+            # Switch strings dynamically
+            from core.i18n import init_i18n, t
+            init_i18n(new_lang)
+            self.title(t("app_title"))
+
+            # Destroy all active components except top-level windows
+            for widget in self.winfo_children():
+                if not isinstance(widget, ctk.CTkToplevel):
+                    widget.destroy()
+
+            # Natively rebuild the interface strings
+            self.init_ui()
+
+            # Refresh buckets data without reloading session
+            if self.s3_manager:
+                self.list_buckets()
+                if self.current_bucket:
+                    self.enter_bucket(self.current_bucket)
+
         except Exception as e:
             import traceback
             traceback.print_exc()

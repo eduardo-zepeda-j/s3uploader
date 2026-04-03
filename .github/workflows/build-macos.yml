@@ -1,0 +1,58 @@
+name: Build macOS ARM64 Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    name: Build on macOS ARM64
+    runs-on: macos-14 # macos-14 runs on Apple Silicon (M1/ARM64)
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.14" # Using 3.12 which has prebuilt wheels for ARM64 typically better supported than 3.14 which is pre-release
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Build Executable
+      run: python build.py
+    - uses: actions/upload-artifact@v4
+      with:
+        name: s3Uploader-macOS-arm64
+        path: dist/*
+
+  publish:
+    name: Publish Release
+    needs: build-macos
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Create working directory
+      run: mkdir ./all-executables
+
+    - name: Download macOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: s3Uploader-macOS-arm64
+        path: ./all-executables/macos
+
+    - name: Check files
+      run: ls -R ./all-executables
+
+    - name: Create/Update GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./all-executables/**/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      timeout-minutes: 10
