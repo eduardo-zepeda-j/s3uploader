@@ -129,7 +129,7 @@ The application:
 * Saves your `access_key` in temporary memory and entrusts your `secret_key` to your computer's Native Keychain Security system (Keychain Access on Mac, Credential Manager on Windows). All managed via `core/auth_manager.py`.
 
 > [!WARNING]
-> Remember never to commit the local `config.json` file that the app might create. It keeps track of the last accessed path and your anti-deletion security PIN.
+> Remember never to commit the local `config.json` file that the app might create. It keeps track of the last accessed path and your anti-deletion security PIN. **(Note: The default deletion PIN is `5834`, but you can change it at any time from the sidebar menu).**
 
 ---
 
