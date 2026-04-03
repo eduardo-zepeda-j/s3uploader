@@ -12,13 +12,19 @@ class Translator:
         return cls._instance
 
     def __init__(self, lang="es"):
-        if getattr(self, '_initialized', False) and getattr(self, 'current_lang', None) == lang:
+        if getattr(self, '_initialized', False):
+            self.set_language(lang)
             return
             
         self.strings = {}
-        self.current_lang = lang
-        self.load_language(lang)
+        self.current_lang = None
+        self.set_language(lang)
         self._initialized = True
+
+    def set_language(self, lang):
+        if self.current_lang == lang and self.strings:
+            return
+        self.load_language(lang)
 
     def load_language(self, lang):
         self.current_lang = lang
@@ -53,7 +59,10 @@ _translator = None
 
 def init_i18n(lang="es"):
     global _translator
-    _translator = Translator(lang)
+    if not _translator:
+        _translator = Translator(lang)
+    else:
+        _translator.set_language(lang)
 
 def t(key, default=None):
     if not _translator:
