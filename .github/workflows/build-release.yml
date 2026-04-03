@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
@@ -55,11 +55,6 @@ jobs:
         name: s3Uploader-Linux
         path: ./all-executables/linux
 
-    - name: Download macOS Artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: s3Uploader-macOS
-        path: ./all-executables/macos
 
     - name: Check files
       run: ls -R ./all-executables
