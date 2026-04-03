@@ -212,7 +212,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         config["last_prefix"] = self.current_prefix
         config["delete_password"] = self.delete_password
         config["view_mode"] = getattr(self, "view_mode", "grid")
-        config["language"] = get_lang()
+        config["language"] = getattr(self, "next_lang", get_lang())
         with open(self.config_path, "w") as f:
             json.dump(config, f)
 
@@ -375,9 +375,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
 
     def change_language(self, new_lang):
         try:
-            from core.i18n import _translator
-            if _translator:
-                _translator.current_lang = new_lang
+            self.next_lang = new_lang
             self.save_session()
             
             # Request clean interior loop reboot inside main.py
