@@ -15,11 +15,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-*.DS_Store
+
+# Archivos de sistema de macOS
+.DS_Store
+**/.DS_Store
+
+
 # Construcción de PyInstaller
 build/
 dist/
 *.spec
+
 
 # Entornos Virtuales
 .venv/

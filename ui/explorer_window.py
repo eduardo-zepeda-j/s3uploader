@@ -54,6 +54,7 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
         # UI State persistent path
         self.config_path = os.path.join(os.path.expanduser("~"), ".s3_commander_config.json")
         
+        self.should_restart = False
         self.view_mode = "grid"
         self.thumbnail_cache = []
         self.delete_password = "5834"
@@ -373,20 +374,19 @@ class S3UniversalApp(ctk.CTk, TkinterDnD.DnDWrapper):
             messagebox.showerror(t("lbl_error"), t("msg_incorrect_pin"))
 
     def change_language(self, new_lang):
-        import traceback
-        import sys
-        import os
         try:
             from core.i18n import _translator
             if _translator:
                 _translator.current_lang = new_lang
             self.save_session()
             
-            # Restart the app in a detached process to avoid macOS UI policy inheritance issues
-            import subprocess
-            subprocess.Popen([sys.executable] + sys.argv, start_new_session=True)
-            self.on_close()
+            # Request clean interior loop reboot inside main.py
+            self.should_restart = True
+            
+            # Instantly tear down this interface window and break the Tkinter event loop
+            self.destroy()
         except Exception as e:
+            import traceback
             traceback.print_exc()
 
     def list_buckets(self):
