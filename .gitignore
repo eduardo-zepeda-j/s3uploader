@@ -15,6 +15,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.spec
 
 # Archivos de sistema de macOS
 .DS_Store
