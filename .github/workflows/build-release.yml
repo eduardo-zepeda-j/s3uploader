@@ -14,8 +14,18 @@ jobs:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact: s3Uploader-Linux
+            files: dist/*
+          - os: windows-latest
+            artifact: s3Uploader-Windows
+            files: dist/*
+          - os: macos-latest          # Apple Silicon (arm64)
+            artifact: s3Uploader-macOS
+            files: dist/*.dmg         # solo el instalador, no el .app suelto
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
@@ -29,8 +39,9 @@ jobs:
       run: python build.py
     - uses: actions/upload-artifact@v4
       with:
-        name: s3Uploader-${{ runner.os }}
-        path: dist/*
+        name: ${{ matrix.artifact }}
+        path: ${{ matrix.files }}
+        if-no-files-found: error
 
   publish:
     name: Publish Release
@@ -54,6 +65,12 @@ jobs:
       with:
         name: s3Uploader-Linux
         path: ./all-executables/linux
+
+    - name: Download macOS Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: s3Uploader-macOS
+        path: ./all-executables/macos
 
 
     - name: Check files
