@@ -54,3 +54,5 @@ Desktop.ini
 # Archivos Temporales / Logs
 *.log
 *.sqlite3
+# Scripts de diagnóstico locales
+scroll_probe.py

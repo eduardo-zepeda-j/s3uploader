@@ -129,7 +129,7 @@ The application:
 * Saves your `access_key` in temporary memory and entrusts your `secret_key` to your computer's Native Keychain Security system (Keychain Access on Mac, Credential Manager on Windows). All managed via `core/auth_manager.py`.
 
 > [!WARNING]
-> Remember never to commit the local `config.json` file that the app might create. It keeps track of the last accessed path and your anti-deletion security PIN. **(Note: The default deletion PIN is `****`, but you can change it at any time from the sidebar menu).**
+> The app keeps UI preferences (last path, view mode, language) in `~/.s3_commander_config.json`. Sensitive values — AWS secret key, the anti-deletion PIN (stored only as a salted hash) and the CloudFront URL — are kept in the OS keychain (macOS Keychain on Mac), never in files. There is no default PIN: the app asks you to create one the first time you delete something, and you can change it from the sidebar menu.
 
 ---
 

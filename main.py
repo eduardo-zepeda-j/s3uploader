@@ -10,15 +10,17 @@ def main():
         # 1. Detect language gracefully before ANY Tkinter instances are bootstrapped
         config_path = os.path.join(os.path.expanduser("~"), ".s3_commander_config.json")
         lang = "es"
+        appearance = "dark"
         if os.path.exists(config_path):
             try:
                 with open(config_path, "r") as f:
                     c = json.load(f)
                     lang = c.get("language", "es")
+                    appearance = c.get("appearance_mode", "dark")
             except: pass
-            
+
         init_i18n(lang)
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode(appearance if appearance in ("dark", "light") else "dark")
         
         # 2. Main app initialization
         app = S3UniversalApp()

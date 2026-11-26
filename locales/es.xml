@@ -17,11 +17,12 @@
     <!-- Modal Move -->
     <string name="move_modal_title">Escoger Destino de Archivos</string>
     <string name="lbl_target_root">Destino: Raíz /</string>
-    <string name="btn_move_here">🚚 Mover Aquí</string>
+    <string name="btn_move_here">Mover aquí</string>
     <string name="lbl_target_prefix">Destino: </string>
     <string name="lbl_none">Ninguno</string>
     <string name="lbl_buckets">Buckets</string>
     <string name="lbl_no_subfolders">No hay subcarpetas.</string>
+    <string name="lbl_empty_folder">Esta carpeta está vacía.</string>
     <string name="lbl_error">Error</string>
     <string name="msg_null_target_title">Destino nulo</string>
     <string name="msg_select_target_bucket">Seleccione un Bucket destino.</string>
@@ -34,22 +35,35 @@
     <string name="warn_no_icon">Advertencia: No se encontró el icono en </string>
     <string name="err_loading_icon">Error cargando icono: </string>
     <string name="lbl_my_repos">Mis Repositorios</string>
-    <string name="btn_refresh">↻ Refrescar</string>
-    <string name="btn_change_pin">🔑 Cambiar PIN de Borrado</string>
+    <string name="btn_refresh">Refrescar</string>
+    <string name="btn_change_pin">Cambiar PIN de Borrado</string>
     <string name="sw_light_mode">Modo Claro</string>
     <string name="sw_dark_mode">Modo Oscuro</string>
-    <string name="btn_logout">🚪 Cerrar Sesión</string>
+    <string name="btn_logout">Cerrar Sesión</string>
     <string name="lbl_storage_class">Clase de Almacenamiento</string>
     <string name="lbl_language">Idioma / Language</string>
     
-    <string name="btn_download_sel">⬇ Descargar Slc.</string>
-    <string name="btn_move_sel">🚚 Mover Slc.</string>
-    <string name="btn_up_files">+ Subir Archivos</string>
-    <string name="btn_up_folder">+ Subir Carpeta</string>
-    <string name="btn_new_folder">+ Nueva Carpeta</string>
+    <string name="btn_download_sel">Descargar sel.</string>
+    <string name="btn_move_sel">Mover sel.</string>
+    <string name="btn_links_sel">Enlaces sel.</string>
+    <string name="btn_delete_sel">Eliminar sel.</string>
+    <string name="msg_select_files_for_links">Selecciona al menos un archivo para generar enlaces.</string>
+    <string name="msg_links_copied_count"> enlace(s) copiado(s) al portapapeles.</string>
+    <string name="msg_links_failed_count"> enlace(s) no se pudieron generar.</string>
+    <string name="msg_pass_to_delete_n_1">PIN para eliminar </string>
+    <string name="msg_pass_to_delete_n_2"> elemento(s):</string>
+    <string name="msg_sure_to_delete_n_1">¿Estás SEGURO de eliminar definitivamente </string>
+    <string name="msg_sure_to_delete_n_2"> elemento(s)?\n\nEsta acción no se puede deshacer.</string>
+    <string name="msg_deleted_count"> elemento(s) eliminado(s).</string>
+    <string name="btn_up_files">Subir archivos</string>
+    <string name="btn_up_folder">Subir carpeta</string>
+    <string name="btn_new_folder">Nueva carpeta</string>
     <string name="btn_view_grid">Visión: Cuadrícula</string>
     <string name="btn_view_list">Visión: Lista</string>
+    <string name="sort_recent">Recientes</string>
+    <string name="sort_name">Nombre</string>
     <string name="lbl_ready">Listo</string>
+    <string name="lbl_loading">Cargando…</string>
     
     <string name="msg_attention_title">Atención</string>
     <string name="msg_connect_select_bucket">Conecta y selecciona un Bucket primero.</string>
@@ -65,7 +79,7 @@
     <string name="msg_pin_updated">PIN actualizado correctamente.</string>
     <string name="msg_incorrect_pin">PIN actual incorrecto.</string>
     
-    <string name="btn_home">🏠 Inicio</string>
+    <string name="btn_home">Inicio</string>
     <string name="msg_lang_change_title">Cambio de Idioma</string>
     <string name="msg_restart_for_lang">Por favor, reinicia la aplicación para aplicar el cambio de idioma.</string>
     
@@ -118,4 +132,8 @@
     <string name="msg_uploaded_count_1">Se subieron </string>
     <string name="msg_uploaded_count_2"> elementos exitosamente.</string>
     <string name="msg_no_parent_dir">El directorio padre no existe.</string>
+    <string name="msg_create_pin">No hay PIN de borrado configurado en este equipo. Crea uno:</string>
+    <string name="msg_confirm_pin">Confirma el PIN:</string>
+    <string name="msg_pin_mismatch">Los PIN no coinciden.</string>
+    <string name="msg_keychain_error">No se pudo guardar en el llavero del sistema.</string>
 </resources>

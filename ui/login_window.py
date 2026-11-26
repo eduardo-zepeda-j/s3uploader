@@ -2,41 +2,68 @@ import customtkinter as ctk
 from tkinter import messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from core.i18n import t
+from ui import design
+from ui.design import Color, Type, Space, RADIUS, RADIUS_SM
 
 class LoginWindow(ctk.CTkToplevel, TkinterDnD.DnDWrapper):
     def __init__(self, master, on_success_callback):
         super().__init__(master)
         self.title(t("login_title"))
-        self.geometry("400x450")
+        self.geometry("420x560")
         self.resizable(False, False)
+        self.configure(fg_color=Color.BG)
         self.grab_set()
-        
+
         self.on_success = on_success_callback
-        
+
         try:
             self.TkdndVersion = master.TkdndVersion
             self.drop_target_register(DND_FILES)
             self.dnd_bind('<<Drop>>', self.on_drop)
         except Exception as e:
             print("No DnD mode available:", e)
-        
-        ctk.CTkLabel(self, text=t("login_subtitle"), font=("Helvetica", 16, "bold")).pack(pady=20)
-        
-        self.btn_csv = ctk.CTkButton(self, text=t("load_csv_btn"), command=self.load_csv)
-        self.btn_csv.pack(pady=10)
-        
-        ctk.CTkLabel(self, text=t("or_manual_entry"), font=("Helvetica", 12)).pack(pady=(10, 0))
-        
-        self.entry_ak = ctk.CTkEntry(self, placeholder_text=t("ph_access_key"), show="*")
-        self.entry_ak.pack(pady=10, padx=20, fill="x")
-        self.entry_sk = ctk.CTkEntry(self, placeholder_text=t("ph_secret_key"), show="*")
-        self.entry_sk.pack(pady=10, padx=20, fill="x")
-        self.entry_rg = ctk.CTkEntry(self, placeholder_text=t("ph_region"))
-        self.entry_rg.pack(pady=10, padx=20, fill="x")
-        
-        self.btn_connect = ctk.CTkButton(self, text=t("btn_connect"), command=self.attempt_login)
-        self.btn_connect.pack(pady=20, padx=20)
-        
+
+        # Generous outer padding, single column, strong vertical rhythm
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=Space.XXL, pady=Space.XXL)
+
+        # Brand
+        brand = ctk.CTkFrame(container, fg_color="transparent")
+        brand.pack(anchor="w", pady=(0, Space.XL))
+        ctk.CTkLabel(brand, text="s3", font=design.font(26, "bold"),
+                     text_color=Color.ACCENT).pack(side="left")
+        ctk.CTkLabel(brand, text="Uploader", font=design.font(26, "bold"),
+                     text_color=Color.TEXT).pack(side="left", padx=(2, 0))
+
+        ctk.CTkLabel(container, text=t("login_subtitle"), font=Type.BODY,
+                     text_color=Color.TEXT_MUTED, justify="left", anchor="w").pack(fill="x", pady=(0, Space.LG))
+
+        self.btn_csv = ctk.CTkButton(
+            container, text=" " + t("load_csv_btn"), image=design.icon("upload", 16, Color.ON_ACCENT),
+            command=self.load_csv, **design.primary_button_kwargs())
+        self.btn_csv.pack(fill="x", pady=(0, Space.LG))
+
+        # Divider with centered label
+        sep = ctk.CTkFrame(container, fg_color="transparent")
+        sep.pack(fill="x", pady=Space.SM)
+        ctk.CTkFrame(sep, height=1, fg_color=Color.LINE).pack(side="left", fill="x", expand=True, pady=10)
+        ctk.CTkLabel(sep, text=t("or_manual_entry"), font=Type.CAPTION,
+                     text_color=Color.TEXT_FAINT).pack(side="left", padx=Space.SM)
+        ctk.CTkFrame(sep, height=1, fg_color=Color.LINE).pack(side="left", fill="x", expand=True, pady=10)
+
+        entry_kwargs = dict(height=38, corner_radius=RADIUS, border_color=Color.LINE_STRONG,
+                            border_width=1, fg_color=Color.SURFACE, font=Type.BODY)
+        self.entry_ak = ctk.CTkEntry(container, placeholder_text=t("ph_access_key"), show="*", **entry_kwargs)
+        self.entry_ak.pack(fill="x", pady=Space.SM)
+        self.entry_sk = ctk.CTkEntry(container, placeholder_text=t("ph_secret_key"), show="*", **entry_kwargs)
+        self.entry_sk.pack(fill="x", pady=Space.SM)
+        self.entry_rg = ctk.CTkEntry(container, placeholder_text=t("ph_region"), **entry_kwargs)
+        self.entry_rg.pack(fill="x", pady=Space.SM)
+
+        self.btn_connect = ctk.CTkButton(
+            container, text=t("btn_connect"), command=self.attempt_login, **design.primary_button_kwargs())
+        self.btn_connect.pack(fill="x", pady=(Space.LG, 0))
+
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def on_drop(self, event):
